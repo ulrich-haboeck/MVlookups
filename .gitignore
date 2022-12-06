@@ -5,7 +5,6 @@
 *.bbl
 *.synctex.gz
 *.out
-*.pdf
 *.pdfsync
 *.toc
 *.run.xml
@@ -13,4 +12,5 @@
 *.txt
 *.pn
 *.png
+*.jpg
 *.nb
