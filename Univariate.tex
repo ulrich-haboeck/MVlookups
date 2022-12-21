@@ -1,0 +1,487 @@
+\appendix
+%\newpage
+\section{Appendix: the univariate case}
+\label{s:appendix}
+
+In this section we compare the univariate variant of Protocol \ref{prot:lookup} with the lookups from \cite{Plookup} and \cite{flookup}, generalized to batches of columns.
+As the ``large number of columns'' batching strategy from Section \ref{s:lookup:large}  again yields a break-even point beyond practical interest\footnotemark, we skip a separate analysis of it.
+\footnotetext{%
+For example, at $2^{12}$ constraints we obtain a break-even point at about $M=40$ columns.
+}%
+The protocols are formulate as Lagrange IOPs, even though the advantage over  polynomial oracles is modest:
+For most polynomials the prover needs to compute their coefficients anyway.
+%\footnotetext{%
+%However, we are aware that these protocols can be transformed into FFT-less ones by using the technique from \cite{UnivariateHypercubeSumcheck}, which translates the hypercube sumcheck to univariate domains.
+%}%
+
+We throughout assume that $F$ is an FFT-friendly finite field, having a multiplicative subgroup $H = \{x\in F: x^n = 1\}$ of order $n$, and denote by $g$ a generator of it.  
+The Lagrange kernel of $H$ is the symmetric bivariate polynomial
+\[
+L_H(X, Y) =\frac{1}{n}\cdot\left(1 + \sum_{i=1}^{n-1} X^i\cdot Y^{n-i}\right) = \frac{1}{n}\cdot \frac{Y\cdot v_H(X) - X\cdot v_H(Y)}{X - Y},
+\]
+where $v_H(X)= X^n - 1$ is the vanishing polynomial of $H$.
+Again, for $y\in H$ the polynomial $L_H(X, y)$ is the Lagrange polynomial which is equal to $1$ at  $x=y$, and zero elsewhere on $H$.
+In all the protocols, the prover is given $M\geq 1$ functions $f_i:H\rightarrow F$, $i=0, \ldots, M-1$, and wants to prove that their ranges are contained in that of a prediscribed table $t: H\rightarrow F$, i.e. 
+\[
+\bigcup_{i=0}^{M-1} \{f_i(x)\}_{x\in H}\subseteq \{t(x)\}_{x\in H}.
+\]
+For notational convenience, will use the same notation for the function $f: H\rightarrow F$ and its sequence of values $(f(g^k))_{k=0}^{n-1}$. 
+
+Our cost analysis is based on the following approximate formula:
+Assume that  we have Lagrange representation of $\nu\geq 1$ polynomials $p_1(X)$, \ldots, $p_\nu(X)$ over $H$, where all $\deg p_i(X) < |H|$, and an $\nu$-variate polynomial $Q$ over $F$ with absolute degree $d$ and multplicative complexity $Q_\mathsf M$.
+Then the number of field multiplications for computing the Lagrange representation of the quotient polynomial $q(X)$ in
+\[
+Q(p_1(X), \ldots, p_\nu(X)) = 0 \mod v_H(X),
+\]
+over the ``multiplication domain'' $H'$ of size $d\cdot |H|$ (except the trivial coset $H$) is 
+\begin{equation}
+\label{e:uv:quotientpoly:cost}
+\begin{aligned}
+\nu  \cdot  \left(\frac{|H|}{2} \cdot\log|H| + \frac{d\cdot |H|}{2} \cdot\log(d\cdot|H|) \right)+ d\cdot |H|\cdot ( Q_M + 1) 
+%\\
+%= d \cdot |H| \cdot\left(\frac{\nu}{2}\cdot\log|H| + Q_\mathsf M + 1 + \frac{\nu}{2} \cdot\log d  \right).
+\end{aligned}
+\end{equation}
+The first term corresponds to the computation of the coefficients of $p_1(X)$, \ldots, $p_\nu(X)$, plus their values over the multiplication domain, and the second term is for the pointwise evaluation of $Q$ over that domain, plus the multiplication with the precomputed inverses of the vanishing polynomial for obtaining the values of $q(X)$.
+Theses values over the $d-1$ (non-trivial) cosets of $H$, enumerated as $a^i\cdot H$, $i=1,\ldots, d-1$,  where $a$ is any element of $H'\setminus H$, define the Lagrange representations of ``component polynomials'' $q_0(X),\ldots, q_M(X)$ of degree $\deg p_i(X) <|H|$ in the decomposition
+\begin{equation}
+\label{e:q:decomposition}
+q(X) = \frac{1}{d}\cdot \sum_{i=1}^{d-1}\frac{v_{H'}(a^{-i}\cdot X)}{v_H(a^{-i}\cdot X)} \cdot q_i(a^{-i}\cdot X).
+\end{equation}
+We point out that when embedding lookups in other IOPs (for example Plonk), so that their overall identities share the same quotient polynomial, then the fractional cost for the lookup is less. 
+
+
+\subsection{The logarithmic derivate approach}
+\label{s:uv:lookup}
+
+\subsubsection{The batch-column argument}
+The lookup condition is equivalent to that the rational function
+\begin{equation}
+\label{e:lookup:h}
+h(x) = \sum_{i=0}^{M-1} \frac{1}{\alpha + f_i(x)} - \frac{m(x)}{\alpha + t(x)},
+\end{equation}
+sums up to zero over $H$, where $\alpha\sample F$ is the first verifier challenge.
+For this the prover provides the Lagrange representation of $\phi(X)$ subject to the domain identity
+\[
+\phi(g\cdot x) - \phi(x) = \sum_{i=0}^{M-1} \frac{1}{\alpha + f_i(x)} - \frac{m(x)}{x + t(x)},
+\]
+or 
+\begin{equation}
+\label{e:uv:lookup:overall:identity}
+ \tau(X) \cdot
+\prod_{i=0}^{M-1} \varphi_i(X) \cdot (\phi(g\cdot X) - \phi(X))= 
+ \tau(X) \cdot \prod_{i=0}^{M-1} \varphi_i(X)\cdot \left(\sum_{i=0}^{M-1} \frac{1}{\varphi_i(X)} - \frac{m(X)}{\tau(X)}\right) \mod v_H(X),
+\end{equation}
+where the right hand side is a polynomial, and 
+\begin{align*}
+\varphi_i(X) &= \alpha + f_i(X), \quad i=0,\ldots, M-1,
+\\
+ \tau(X) &= \alpha + t(X).
+\end{align*}
+The overall identity \eqref{e:uv:lookup:overall:identity} is of the form
+\[
+Q(\tau(X), \varphi_0(X), \ldots, \varphi_{M-1}(X), \phi(X), \phi(g\cdot X)) = 0 \mod v_H(X),
+\]
+where $Q$ has $\nu = M + 3$ variables and absolute degree $d= M + 2$. 
+The prover computes the Lagrange representation of the overall quotient polynomial over the multiplication domain $H'$ of size $(M + 1)\cdot |H|$, except $H$,
+and sends the Lagrange representations of the component polynomials $q_1(X),\ldots, q_{M}(X)$ as defined by \eqref{e:q:decomposition} to the verifier.
+The verifier checks the overall identity at a random $\beta\sample F$ by querying the oracles at the needed points.
+
+\subsubsection{Cost analysis}
+
+As in Section \ref{s:lookups}, we use the fractional representation from \eqref{e:uv:lookup:overall:identity} for computing domain evaluations of $Q$. 
+Using batch inversion, the equivalent multiplicative complexity for computing $Q$ is 
+\[
+Q_\mathsf M = M + 1 + 3\cdot (M+1) + 2 = 4\cdot M + 6,
+\] 
+taking into account the proportional cost of batch inversion as $3$ multiplications.  
+
+The prover cost, simplified to the number of field multiplications, is as follows.
+Computing the values of $\varphi_0, \ldots, \varphi_{M-1}$ and $\tau$ over $H$ does not cost a single field multiplication, their inverses are obtained within
+\[
+(M+1)\cdot 3\cdot |H| 
+\]
+multiplications, from which $h(x)$ over $H$ and the values of the sumcheck polynomial $\phi$ are obtained by another overll $2\cdot |H|$ multiplications.
+%The interpolants of $\varphi_0,\ldots, \varphi_{M-1}$, $\tau$ and $\phi$ cost
+%\[
+%(M + 2) \cdot \mathsf{FFT}(|H|) = |H|\cdot \frac{M + 2}{2} \cdot \log|H|
+%\] 
+%field multiplications.
+Since the values of the shifted function $\phi(g\cdot X)$ are directly obtained from those of $\phi$, we may apply 
+\eqref{e:uv:quotientpoly:cost} for $\nu = M + 2$, and computing the Lagrange representation of the overall quotient takes
+\[
+(M + 2) \cdot \left(\frac{|H|}{2}\cdot \log|H| + \frac{(M+2)\cdot |H|}{2} \cdot\log((M+2)\cdot|H|) \right) + (M+2)\cdot |H|\cdot (Q_\mathsf M + 1)
+%= d \cdot |H| \cdot\left(\frac{M + 2}{2}\cdot\log|H| + Q_\mathsf M +1 + \frac{M + 2}{2} \cdot\log d  \right)
+\]
+multiplications.
+Overall, the oracle prover demands
+%\begin{equation}
+% |H| \cdot\left((d+1) \cdot \frac{M + 2}{2}\cdot \log|H| +  \frac{M + 2}{2} \cdot d\cdot \log d + d\cdot Q_M + 3\cdot M + 5   \right)
+%\end{equation}
+\begin{equation}
+ |H| \cdot\left(\frac{(M + 2)^2}{2}\cdot (\log|H| + \log (M+2)) +  (M + 2)\cdot(4\cdot M+6) + \frac{M+2}{2} \cdot \log |H| + 4\cdot M + 7   \right)
+\end{equation}
+field multiplications, and it provides the equivalent of $M + 3$ functions of size $|H|$, i.e. the values of $m$, $\phi$  and the component polynomials $q_1, \ldots, q_{M+1}$ over $H$.
+
+
+\subsubsection{The reference variant}
+
+%
+% Large batching strategy,
+%
+% the $f_i$ together with $t$ are represented by a single function $ft$ over the extended domain $\bar H$ of size $(M+1)*|H|$
+% the sumcheck and its $\phi$ is over $\bar H$, the overall identity
+%  phi(g X) - phi(X) = m(X) * "L(H, x)" * 1/ ft(X) mod \bar H,
+% is of degree $d= 2$, and the quotient poly is of size $|\bar H| =  (M+1) *|H|$. (The "L(H,x)" is equal to v_{\bar H}(X)/ v_{H}(X). 
+% The overall oracle cost is the equivalent of $2* (M + 1) + 1$ polys of size $|H|$. 
+% $Q_M = 1$ and therefor 
+% 
+
+
+
+The prover provides $M+1$ helper functions, one for each reciprocal
+$
+h_i  (x) = \frac{1}{\alpha + f_i(x)},
+$
+$i=1,\ldots, M$, and another one for
+$
+h_{t}(x) = \frac{1}{\alpha + t(x)}.
+$
+Correctness of the helper functions is enforced by the domain identities
+\[
+h_i(x) \cdot (\alpha + f_i(x)) - 1 = 0,
+\]
+for $i=1, \ldots, M$, and
+\[
+h_{t}(x) \cdot (\alpha + t(x)) - 1 = 0 ,
+\]
+and these are altogether subject to the sumcheck
+\[
+\sum_{i=1}^{M} h_i(x) - h_t(x)\cdot m(x) = \phi(g\cdot x ) - \phi(x).
+\]
+The domain identities are again turned into a sumchecks by applying the Lagrange kernel $L_{H}(\:.\:, \vec z)$, where $\vec z\sample F^n$.
+Combining the sumchecks using the powers of a random $\lambda\sample F$ leads to the overall sumcheck  
+\begin{align*} 
+%\label{e:sumcheckh}
+\sum_{\vec x \in H} Q(L_H(\vec x, \vec z),  \varphi_1(\vec x),\ldots, \varphi_M(\vec x), \tau(\vec x), h_1(\vec x),\ldots h_{M}(\vec x), h_t(\vec x), m(\vec x))&= 0,
+\end{align*}
+with
+\begin{equation}
+\label{e:lookup:Q:linear}
+\begin{aligned}
+Q(L, \varphi_1,\ldots, \varphi_M, \tau, h_1,&\ldots, h_M, h_t) =   
+\\
+&
+\sum_{i=1}^{M} h_i - m\cdot  h_t 
++   L\cdot\left(\sum_{i=1}^{M}\lambda^i \cdot (h_i \cdot \varphi_i - 1)+ \lambda^{M+1} \cdot (h_{t}\cdot\tau - 1) \right).
+\end{aligned}
+\end{equation}
+In this variant, the prover provides an overall equivalent of $M+2$ oracles of size $|H|$. 
+The sumcheck polynomial $Q$ has  $\nu= 2\cdot (M + 2)$ variables but its absolute degree $d=3$ is independent of the number of columns.
+The arithmetic complexities of $Q$ are $|Q_\mathsf M|=  2\cdot (M+2)$, $|Q_\mathsf S|= M + 2$, $|Q_\mathsf A|=2\cdot M$.
+
+\subsubsection{Computational cost}
+The prover cost of the protocol is as follows. 
+Computing the values of $h_1, \ldots, h_M$ and $h_t$ over $H$ using batch inversion costs 
+\[
+(M+1)\cdot |H| \cdot(3 \cdot \mathsf M + \mathsf A),
+\]
+and the values for $L_{H}(\:.\:, \vec z)$ over $H$ are determined in  $|H|\cdot (\mathsf M + \mathsf A)$.
+According to \eqref{e:sumcheck:cost:precise} the overall sumcheck costs
+\[
+|H| \cdot \left(1-\frac{1}{|H|}\right)\cdot \big(14\cdot (M+2) \cdot \textsf M + 6\cdot (M+2)\textsf S + (7\cdot M +16) \cdot \textsf A\big).
+\]
+Neglecting the $\frac{1}{M\cdot |H|}$-term, the overall cost for the prover is
+\begin{equation}
+\label{e:lookup:large:cost}
+|H|\cdot ((17\cdot M + 32)\cdot\mathsf M + (6\cdot M + 12)\cdot\mathsf S + (15\cdot M + 18)\cdot\mathsf A),
+\end{equation}
+but the prover needs to provide the oracles for one function over  a domain of size $M\cdot|H|$, and one over $H$. 
+\subsection{Plookup}
+\label{s:uv:plookup}
+
+We describe the \cite{LookupsBlog} variant of plookup \cite{Plookup}, generalized to batch-lookups.
+Consider the concatenation of the sequences $(f_i(g^k))_{k=0}^{n-1}$, $i=0,\ldots, M-1$, and $(t_k)$, ordered as they occur in $(t_k)$:
+\[
+\bar s = (\bar s_i)_{i=0}^{(M + 1)\cdot n - 1} = (\underbrace{t_0, \ldots, t_0}_{1 + m_0 \text{ times}}, \underbrace{t_1, \ldots, t_1}_{1 + m_1 \text{ times}}, \ldots, \underbrace{t_{n-1}, \ldots, t_{n-1}}_{1 + m_{n-1} \text{ times}}),
+\]
+and split it into $(M+1)$ sequences of length $n$,  
+\[
+s_i = (\bar s_{i + k\cdot (M+1)})_{k = 0}^{n-1},
+\] 
+with $i= 0, \ldots, M$.
+We regard these sequences again as functions on $H$.
+Then
+\begin{equation}
+\label{e:uv:lookup:multiset}
+\bigcup_{i=0}^{M-1} \{s_i(x), s_{i+1}(x) \}_{x\in H} \cup \{(s_M(x), s_0(g\cdot x))\}_{x\in H} = \bigcup_{i=0}^{M-1}\{ (f_i(x), f_i(x))\}_{x\in H} \cup \{(t(x), t(g\cdot x))\}_{x\in H}
+\end{equation}
+as multisets.
+Moreover, this multiset equality is equivalent to $\bigcup_{i=0}^{M-1}\{f_i(x)\}_{x\in H}\subseteq \{t(x)\}_{x\in H}$.
+That is, the set inclusion holds if and only if there exists functions $s_0,\ldots, s_M: H\rightarrow F$ satisfying \eqref{e:uv:lookup:multiset}, which is rephrased by the lookup identity
+\begin{equation}
+\label{e:uv:plookup:identity}
+\begin{aligned}
+\prod_{x\in H} \prod_{i=0}^{M-1} (X + s_i(x) + s_{i+1}(x)\cdot Y)\cdot (&X + s_M(x) + s_0(g\cdot x)\cdot Y) 
+\\
+&= \prod_{x\in H} \prod_{i=0}^{M-1} (X + f_i(x) + f_i(x)\cdot Y)\cdot (X + t(x) + t(g\cdot x)\cdot Y).
+\end{aligned}
+\end{equation}
+
+The lookup protocol is as follows.
+The prover sends $s_0$, \ldots, $s_{M}$ subject to \eqref{e:uv:plookup:identity} to the verifier, which returns random samples $\alpha, \beta\sample F$ for $X$ and $Y$, reducing the lookup identity to the grand product
+\begin{equation}
+\label{e:uv:plookup:grandproduct}
+\prod_{x\in H}  \frac{\sigma_{M}(x)}{\tau(x)}\cdot \prod_{i=0}^{M-1} \frac{\sigma_{i}(x)}{\varphi_{i}(x)}   = 1,
+\end{equation}
+where
+\begin{align*}
+\tau(x) &= \alpha + t(x) + \beta\cdot t(g\cdot x), 
+\\
+\varphi_i (x) &=\alpha +  (1+\beta)\cdot f_i(x),\quad  i=0,\ldots, M-1,
+\\
+\sigma_i(x) &= \alpha + s_i(x) + \beta\cdot s_{i+1}(x),\quad  i= 0, \ldots, M-1,
+\\
+\sigma_{M}(x) &=  \alpha + s_M(x) + \beta\cdot s_0(g\cdot x).
+\end{align*}
+To prove \eqref{e:uv:plookup:grandproduct}, the prover provides the cumulative products polynomial $\phi$ for the function $h(x) =  \frac{\sigma_{M}(x)}{\tau(x)}\cdot \prod_{i=0}^{M-1} \frac{\sigma_{i}(x)}{\varphi_{i}(x)} $, which is characterized by the  domain identities
+\begin{equation*}
+\phi(g\cdot x) \cdot \tau(x) \cdot \prod_{i=0}^{M-1} \varphi_i (x)
+- \phi(x)\cdot \prod_{i=0}^M \sigma_i (x)
+= 0,
+\end{equation*}
+and
+\begin{equation*}
+L_H(x, 1)\cdot (\phi(x) - 1) = 0,
+\end{equation*}
+for all $x\in H$.
+The identities are combined into a single one using a random $\lambda \sample F$ from the verifier, yielding the overall identity
+\begin{align}
+\label{e:plookup:overall:identity}
+Q(L_H(X,1), \varphi_0(X), \ldots, \varphi_{M-1}(X), \sigma_0(X),\ldots,\sigma_M(X), \tau(X), \phi(X), \phi(g\cdot X)) = 0 \mod v_H(X),
+\end{align}
+where
+\begin{equation}
+\label{e:plookup:Q}
+Q(L, \varphi_0, \ldots, \varphi_{M-1}, \sigma_0,\ldots,\sigma_M, \tau, \phi, \phi_g) =
+\phi_g \cdot \tau \cdot \prod_{i=0}^{M-1} \varphi_i
+- \phi \cdot \prod_{i=0}^M \sigma_i
++  \lambda \cdot L \cdot (\phi - 1).
+\end{equation}
+The prover provides (the Lagrange representation) of the  quotient components $q_1(X), \ldots, q_{M+1}(X)$, and the verifier checks the overall identity  \eqref{e:plookup:overall:identity} at a random $\gamma\sample F$, by querying the involved polynomials at the needed points.
+
+\subsubsection*{Cost analysis}
+
+The polynomial $Q$ in the overall identity \ref{e:plookup:overall:identity} has $\nu = 2\cdot (M + 1) + 3$ variables, absolute degree $d = M+2$, and multiplicative complexity $Q_M = 2\cdot (M +1) + 2$.
+Note that the values of $\phi(g\cdot X)$ over $H$ or any larger domain can be obtained by shifting, hence we can reduce the number of variables by one when using the cost formula \eqref{e:uv:quotientpoly:cost}.
+The values over $H$ for all $\varphi_i$, $\sigma_i$, and $\tau$ (overall $2\cdot (M+1)$ functions) consume
+\[
+|H|\cdot 2\cdot (M+1),
+\]
+field multiplications, the rational function $h(x)$ over $H$ is derived within
+\[
+6\cdot |H|,
+\] 
+using batch inversion, and computing the cumulative product function $\phi$ over $H$ costs another $|H|\cdot \mathsf M$.
+Assuming that the values of $L_H(x, 1)$ over the multiplication domain are precomputed, and that the values of $\phi(g\cdot X)$ over that domain are obtained by shifting, the cost of computing the overall quotient polynomial is 
+\[
+(2 \cdot M + 3) \cdot \left(\frac{|H|}{2}\cdot\log |H| +  \frac{d\cdot |H|}{2} \cdot\log(d\cdot|H|)\right) + d\cdot |H|\cdot (Q_M  + 1).
+\]
+The overall cost of the oracle prover is  
+\begin{equation}
+%|H| \cdot\left( \left((d + 1)\cdot M  + \frac{3}{2} + 2\cdot d\right)\cdot\log|H| + 2M + 9 + 1 + (M+2)\cdot d\cdot \log d  \right)
+%\\
+|H| \cdot\left( \frac{(2\cdot M + 3)\cdot (M + 3)}{2}\cdot\log|H| +  (M+2)\cdot (2\cdot M + 4) + \frac{(2\cdot M+3)\cdot (M+2)}{2}\cdot \log d + 2\cdot M + 9 \right),
+\end{equation}
+% M+ 1 + 1 + d - 1 = 2(M+1) 
+while the oracle costs are equvialent to $2\cdot (M + 1) + 1$ domain evaluations of size $|H|$, corresponding to $s_0, \ldots, s_M$, $\phi$, and the quotient components $q_1, \ldots, q_{M+1}$.
+
+
+
+
+\subsection{The flookup strategy}
+\label{s:uv:flookup}
+
+Section 5 of \cite{flookup} describes a polynomial IOP for lookups, which is almost identical to the logarithmic derivative approach. 
+We present its generalization to batch-lookups. 
+For showing that the ranges of witness function $f_i: H\rightarrow F$, $i=0, \ldots, M-1$, are contained in the range of a table $t: H\rightarrow F$, the fractional logaritmic derivative identity
+%\[
+%\sum_{x\in H} \frac{1}{X + f(x)} = \sum_{x\in H} \frac{m(x)}{X + t(x)}
+%\]
+is turned into the polynomial identity
+\[
+\sum_{x\in H} \sum_{i=0}^{M-1} \frac{v_T(X)}{X + f_i(x)} = \sum_{x\in H} m(x) \cdot \frac{v_T(X)}{X + t(x)},
+\]
+by multiplying with the precomputed table polynomial $v_T(X) = \prod_{x\in H} (X + t(x))$. 
+Instead of the multiplicity function $m$, the prover explicitly provides the polynomial\footnote{%
+In a variant of the protocol, communicated by A. Gabizon, the prover provides the Lagrange representation of $R_T(X)$ with respect to the Lagrange basis of the table set $\{t(x) : x\in H\}$. 
+As Lagrange IOPs with respect to several Lagrange bases have different impacts on the Lagrange commitment scheme (e.g., it leads to a separate commitment in a KZG-like scheme, or a separate inner product argument for an IPA-like scheme), we do not compare with this variant.
+}% 
+\[
+R_T(X) = \sum_{x\in H} m(x) \cdot \frac{v_T(X)}{X - t(x)},
+\]
+and engages with the verifier in an IOP for showing that
+\begin{equation}
+\sum_{x\in H}  \sum_{i=0}^{M-1} \frac{v_T(X)}{X + f_i(x)} = R_T(X).
+\end{equation}
+The verifier queries $v_T(X)$ and $R_T(X)$ at a random challenge $\alpha\sample F$, and both prover and verifier run a sumcheck argument for 
+\[
+\sum_{x\in H}  \sum_{i=0}^{M-1} \frac{1}{\varphi_i(x)} = \frac{R_T(\alpha)}{v_T(\alpha)},
+\]
+where $\varphi_i(x) = \alpha + f_i(x)$.
+For this the prover provides the Lagrange representation of the sumcheck polynomial $\phi(X)$  subject to the domain identity
+\[
+\phi(g\cdot x) - \phi(x) + \frac{R_T(\alpha)}{|H|\cdot v_T(\alpha)} = \sum_{i=0}^{M-1} \frac{1}{\varphi_i(x)}
+\]
+for all $x\in H$, or as the polynomial identity
+\begin{equation}
+\label{e:flookup:overall:identity}
+\left(\phi(g\cdot X) - \phi(X) + \frac{R_T(\alpha)}{|H|\cdot v_T(\alpha)}\right) \cdot \prod_{i=0}^{M-1} \varphi_i(X) =  \prod_{i=0}^{M-1} \varphi_i(X)\cdot  \sum_{i=0}^{M-1} \frac{1}{\varphi_i(x)}  \mod v_H(X).
+\end{equation}
+The overall identity is of the form 
+\[
+Q(\phi_0(X), \ldots, \phi_{M-1}(X), \phi(X), \phi(g\cdot X)) = 0 \mod v_H(X),
+\]
+with $Q$ having $\nu = M + 2$ variables and absolute degree $d = M + 1$.
+The prover provides the Lagrange representation of the component polynomials $q_1(X), \ldots, q_M(X)$ for the overall quotient.
+The verifier samples $\beta\sample F$ and checks \eqref{e:flookup:overall:identity} at $X=\beta$ by quering the involved polynomials at the needed points. 
+
+\subsubsection*{Cost analysis}
+%The main advantage of the protocol is that \eqref{e:flookup:overall:identity}  is quadratic over $H$, wheras in the univariate variant 
+%of Protocol \ref{prot:lookup} the overall identity is cubic.
+%%\[
+%%\left(\phi(g\cdot X) - \phi(X)\right)\cdot (\alpha + t(X))\cdot (\alpha + f(X)) =   \alpha + t(X) +  (\alpha + f(X)) \cdot m(X) + q(X) \cdot v_H(X) 
+%%\]
+%The quadratic degree leads to lower oracles costs, with a difference of $|H|$ in favor of the flookup protocol.
+%On the other hand, the computational costs for $R_T(X)$ are $\bigO{|H|\cdot \log^2|H|}$, by interpolating the multiplicities $m$ as function on the table range $T=\{t(x) : x\in H\}$. 
+%Concretely, using pre-computed intermediate products of table factors $X + t(x)$ (both the coefficients and their values used for obtaining them), the  interpolation algorithm uses
+%\[
+%\frac{|H|}{8} \left(3\cdot \log^2|H| + 11\cdot\log|H| + 3 \right)
+%\] 
+%field multiplications. 
+
+Let us count the number of field operations of the oracle prover.
+Computing the coefficients of $R_T(X)$ by interpolating the multiplicities $m$ as a function on the table range $T=\{t(x) : x\in H\}$ costs 
+\[
+\frac{|H|}{8} \left(3\cdot \log^2|H| + 11\cdot\log|H| + 3 \right)
+\] 
+field multiplications, using pre-computed intermediate products of the table factors $X + t(x)$ (both the coefficients and their values used for obtaining them). 
+See \cite{flookup} and the references therein for details on Lagrange interpolation over general sets.
+The Lagrange representation of $R_T(X)$ over $H$ is then obtained by another 
+\[
+\frac{|H|}{2} \cdot \log |H|
+\]
+multiplications.
+The values of the reciprocals $h(x) = \frac{1}{\alpha + f(x)}$ over $H$ cost $3\cdot |H|$ multiplications (using batch inversion), the computation of $\phi$ does not involve a single field multiplication.
+Using the fractional representation \eqref{e:flookup:overall:identity} for evaluating $Q$ using batch inversion yields the equivalent multiplicative complexity
+\[
+Q_\mathsf M = M + 1 +3\cdot M = 4\cdot M + 1,
+\]
+and by \eqref{e:uv:quotientpoly:cost} computing the components $q_1, \ldots, q_M$ of the overall quotient costs 
+\[
+%\nu  \cdot  \left(\frac{|H|}{2} \cdot\log|H| + \frac{d\cdot |H|}{2} \cdot\log(d\cdot|H|) \right)+ d\cdot |H|\cdot ( Q_M + 1) 
+|H|\cdot (M+1) \left(\frac{1}{2} \cdot\log|H| + \frac{(M+1)}{2} \cdot\log((M+1)\cdot|H|) \right)+ (M+1)\cdot |H|\cdot (4\cdot M + 1). 
+\]
+The overall cost of the oracle prover is 
+\begin{equation}
+\label{e:uv:flookup:cost}
+\begin{aligned}
+|H|\cdot \Bigg((M+1) \left(\frac{M+2}{2} \cdot\log|H| + \frac{(M+1)}{2} \cdot\log(M+1) \right) + &(M+1) \cdot (4\cdot M + 1)
+\\
+&+ \frac{3}{8}\cdot \log^2|H| + \frac{15}{8}\cdot\log|H| + \frac{3}{8} + 5
+\Bigg),
+\end{aligned}
+\end{equation}
+whereas the oracle costs are equivalent to $M+2$ domain evaluations of size $|H|$, corresponding to $R_T$, $\phi$, and $q_1, \ldots, q_M$.
+
+%
+%Due to the quite small $\bigO{\log^2 |H|}$-term and the lower degree of the overall identity, our operations counts indicate that the flookup strategy performs better than the univariate variant of Protocol \ref{prot:lookup}, with a break-even point beyond $|H| = 2^{20}$.
+%(However, considering batch-column lookups, the performance gap between the two IOPs shrinks with larger numbers of columns.)
+
+%The same holds for a variant\footnotemark of the flookup IOP, which has a $\bigO{|H|\cdot\log|H|}$ prover.
+%\footnotetext{%
+%This variant was reported to us by A. Gabizon.
+%}%
+%In this variant the prover provides the polynomial $R_T(X)$ with respect to the non-normalized Lagrange basis $\frac{v_T(X)}{X - z}$, $z\in T$ of the table set, whereas the other polynomials $\phi$ and $h$ are provided with respect to the Lagrange basis of $H$.
+%This approach removes the interpolation cost for $R_T(X)$, but comes at the cost of a polynomial commitment scheme with an opening proof for two different Lagrange representations.
+%For the \cite{Kate} commitment scheme such a hybrid Lagrange evaluation proof increases the number of multi-scalar multiplications by $|H|$, whereas for inner product arguments that increase is higher.
+%We shall elaborate on the details in another document.
+
+%The computational cost of the prover is as follows.
+%According to \cite{ModernAlgebra}, the polynomial $R_T(X)$ can be obtained from the multiplicity function $\tilde m: T\rightarrow F$ over  $T= \{t(x): x\in H\}$ by optimized Lagrange interpolation.
+%Using precomputations this can be done within
+%\[
+%\big( 3 \cdot \textsf{FFT}(2\cdot |H|) + 2\cdot |H|\big) \cdot  \log |H| 
+%\approx 6\cdot |H|\cdot \log^2 |H| + 8 \cdot |H|\cdot\log|H|
+%\]
+%field multiplications.
+%
+%
+%Computing the value $v_T(\alpha)$ costs $1\cdot |H|\cdot (\textsf M + \textsf A)$, hence  
+%given the values of $f(x)$ over $H$, the domain evaluation of $\frac{v_T(\alpha)}{\alpha + f(x)}$ is obtained within
+%\[
+%(1\cdot |H| + 3\cdot |H|)\cdot\mathsf M + |H|\cdot\mathsf A,
+%\]
+%using batch inversion.
+
+\subsection{Comparison}
+
+Based  on the equivalent number of field multiplications from Table \ref{tab:pippenger}, we obtain the following estimation of 
+the logarithmic derivative lookups over plookup, as the ratio of their number of field multiplications $r =\nicefrac{\mathsf M({Plookup})}{\mathsf M({logD})}$:
+For all domain sizes $\log|H| = 12, 14, 16, 18$ we get a maximum advantage of about $r_{max} \approx 1.8$, whereas 
+\[
+r =\nicefrac{\mathsf M({plookup})}{\mathsf M({logD})} \geq 1.75
+\]
+whenever $M\geq 12$.
+Although having worse asymptotic complexity, the flookup strategy outperforms the logarithmic derivative plookup at these domain sizes, see Table \ref{tab:uv:comparison}.
+Its maximum advantage is about $1.25$ -- $1.3$ is throughout at $M=1$, wheras that advantage tends to $1$ at high number of columns (for $M\geq 33$ it is less than $5\%$). 
+
+%\begin{table}[h!]
+%\caption{%
+%The estimated performance advantage of the logarithmic derivative lookups over plookup, as the ratio of their number of field multiplications $r =\nicefrac{\mathsf M({Plookup})}{\mathsf M({logD})}$.
+%The numbers are based on the equivalent number of field multiplication from Table \ref{tab:pippenger}.
+%For hypercube sizes $|H|$ ranging from $2^{12}$--$2^{18}$ we describe the maximum ratio $r_{max}$ over the number of columns $M$, as well as the ranges for $M$ over which $r$ is larger than $2$ and $3$, respectively.
+%The minimum ratio is throughout $r= 1.5$ and obtained in the single-column setting $M=1$. 
+%}
+%\label{tab:uv:comparison}
+%\vspace*{0.5cm}
+%\centering
+%\begin{tabular} {|c|c|c|c|c|}
+%\hline
+%$\log|H|$ & $r\geq 1.75$ & $r\geq 1.5$ & $r_{max}$ 
+%\\\hline
+%12 & $M\geq 12$ & $M\geq 3$ & $1.8$ 
+%\\
+%14 & $M\geq 12$ & $M\geq 3$ & $1.8$ 
+%\\
+%16 &$M\geq 12$ & $M\geq 3$ & $1.8$ 
+%\\
+%18 & $M\geq 11$  & $M\geq 3$ & $1.8$ 
+%\\\hline
+%\end{tabular}
+%\end{table}
+%
+
+%\begin{table}[h!]
+%\caption{%
+%The estimated performance advantage of the flookup strategy over the logarithmic derivate approach, as the ratio of their number of field multiplications $r =\nicefrac{\mathsf M({flookup})}{\mathsf M({logD})}$.
+%The numbers are based on the equivalent number of field multiplication from Table \ref{tab:pippenger}.
+%For hypercube sizes $|H|$ ranging from $2^{12}$--$2^{18}$ we describe the maximum ratio $r_{max}$ over the number of columns $M$, as well as the ranges for $M$ over which $r$ is smaller than $1.10$ and $1.05$, respectively.
+%}
+%\label{tab:uv:comparison}
+%\vspace*{0.5cm}
+%\centering
+%\begin{tabular} {|c|c|c|c|c|}
+%\hline
+%$\log|H|$ & $r\leq 1.10$ & $r\leq 1.05$ & $r_{max}$ 
+%\\\hline
+%12 & $M\geq 12$ & $M\geq 32$ & $1.3$ (at $M = 1$) 
+%\\
+%14 & $M\geq 12$ & $M\geq 33$ & $1.3$ (at $M = 1$)  
+%\\
+%16 &$M\geq 13$ & $M\geq 34$ & $1.27$ (at $M = 1$)  
+%\\
+%18 &$M\geq 13$ & $M\geq 34$ & $1.25$ (at $M = 1$)  
+%\\\hline
+%\end{tabular}
+%\end{table}

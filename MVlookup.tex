@@ -110,9 +110,9 @@
 \author{%
 Ulrich Hab{\"o}ck
 \\\\
-Orbis Labs
+Orbis Labs, Polygon Zero
 \\
-\texttt{team@orbislabs.com}
+\texttt{uhaboeck@polygon.technology}
 }
 
 %\date{%
@@ -133,7 +133,8 @@ logarithmic derivatives
 }
 \date{%
 \today\footnote{%
-This updated version includes a discussion of the univarate variant of the argument.
+This updated version clarifies the trade-off between algebraic degree and the number of commitments, previously expressed by two protocol variants (one for small and one for large numbers of columns).
+It further discusses Polygon Miden's bounded multiplicity encoding, applied to domain-sized table lookups.
 }
 }
 \maketitle
@@ -144,7 +145,7 @@ Based on this simple fact, we construct an interactive oracle proof for lookups 
 For single-column lookups the performance is comparable to Plookup, taken to the multivariate setting by Hyperplonk+ \cite{Hyperplonk}.
 However, the real power of our argument unfolds in the case of ``batch-column'' lookups, where multiple columns are subject to the same table lookup:  
 While the number of field operations is comparable to the Plookup strategy, the oracles provided by our prover are significantly fewer. 
-For example, given columns of length between $2^{12}$ and $2^{18}$ , and assuming a commitment scheme over an elliptic curve with a $256$ bit large base field, our paper-pencil operation counts indicate that the logarithmic derivative lookup is more than $3.5$ times faster.
+For example, given $M=20$ columns of length between $2^{12}$ and $2^{18}$ , and assuming a commitment scheme over an elliptic curve with a $256$ bit large base field, our paper-pencil operation counts indicate that the logarithmic derivative lookup is more than $3.9$ times faster.
 \end{abstract}
 %Keywords: SNARKs, recursive proofs, aggregation scheme
 
@@ -206,7 +207,7 @@ To underpin that our work was not influenced by concurrent efforts we refer to t
 %\sum_{i=1}^N \frac{v_T(X)}{X - a_i}  = R_T(X).
 %\]
 %While the oracle costs, measured by the number and sizes of the polynomials, are less than in our argument, that advantage is traded for the computation of $R_T(X)$ in the ring of polynomials, which in general consumes $O(M\cdot\log^2 M)$ field operations.
-We give comparison with our approach in the appendix. 
+%We give comparison with our approach in the appendix. 
 
 This document focuses on batch-column lookups with asymptotically linear prover costs.  
 It is organized as follows.
@@ -221,9 +222,7 @@ These rely on the time shift from Hyperplonk \cite{Hyperplonk}, and we consider 
 %Eventually, in Appendix \ref{s:appendix} we recap the univariate Plookup argument, sketch inner product arguments for Lagrange queries,  and show how to turn the multivariate KZG \cite{Kate} commitment scheme into a scheme for Lagrange queries, which does not access the coefficients at any point in time.
 
 We finally point out, that although our protocol is written for the multilinear setting, its translation into a univariate proof is straight-forward.
-However, in the univariate context the benefit of logarithmic derivatives is much less.
-This is essentially due to the demand of overall quotients with respect to the witness domain, the degree of which increases with the batch size.
-In this updated version of the document, we give a detailed treatise of the univariate protocol in Appendix \ref{s:appendix}.
+We expect these univariate arguments to improve similarly over multi-column lookups based on the Plookup strategy.
 
 
 
@@ -620,14 +619,15 @@ The soundness error bound increases only slightly,
 
 Let us discuss the prover cost of the sumcheck protocol for the case that  $p(\vec X) = p(X_1,\ldots, X_n)$ is of the form
 \[
-p(\vec X) = Q(w_1(\vec X), \ldots, w_m(\vec X)),
+p(\vec X) = Q(w_1(\vec X), \ldots, w_\nu(\vec X)),
 \]
 with each $w_i(\vec X)\in F[X_1,\ldots, X_n]$ being multilinear, and 
 \[
-Q(Y_1,\ldots, Y_m) = \sum_{(i_1,\ldots, i_m)\in \{0,1\}^m} c_{i_1,\ldots, i_m} \cdot Y_1^{i_1}\cdots Y_m^{i_m}
+Q(Y_1,\ldots, Y_\nu) = \sum_{(i_1,\ldots, i_\nu)\in \{0,1\}^\nu} c_{i_1,\ldots, i_\nu} \cdot Y_1^{i_1}\cdots Y_\nu^{i_\nu}
 \]
  is a multivariate polynomial having (a typically low) absolute degree $d$.
-We denote the arithmetic complexity, i.e. the number of field multiplications $\mathsf M$, substractions $\mathsf S$ and additions $\mathsf A$ to evaluate $Q$ by $|Q|_\textsf M$, $|Q_\textsf S|$ and $|Q|_\textsf A$, respectively.
+We denote the arithmetic complexity, i.e. the number of field multiplications $\mathsf M$, substractions and additions $\mathsf A$ to evaluate $Q$ by $|Q|_\textsf M$ and $|Q|_\textsf A$, respectively.
+(For simplicity we count substractions as additions.) 
 Each of the univariate polynomials $s_i(X)$, $i=1,\ldots, n$, is of degree at most $d$ the absolute degree of $Q$, and is computed from its values over a set $D\supseteq \{\pm 1\}$ of  size $|D| = d + 1$.
 In each step $i=1,\ldots, n$, the values of $s_i(z)$ for $z\in D$ are obtained by linear interpolation of the domain evaluations of each
 \[
@@ -643,8 +643,8 @@ Given the random challenge $r_i$ from the verifier, the domain evaluation of eac
 w_j(r_1,\ldots, r_{i-1}, r_i, X_{i+1},\ldots, X_n)
 \]
 is computed by another linear interpolation.
-Linear interpolation costs $|H_i|$ multiplications and the same number of additions/substractions for each multilinear polynomial, the values of $Q$ are obtained within $|Q|_\textsf M \cdot \textsf{M} +   |Q|_\textsf S \cdot \textsf S + |Q|_\textsf A \cdot \textsf A$.  
-In terms of field multiplications $\mathsf M$, substractions $\mathsf S$ and additions $\mathsf A$, step $i$ consumes 
+Linear interpolation costs $|H_i|$ multiplications and the same number of additions/substractions for each multilinear polynomial, the values of $Q$ are obtained within $|Q|_\textsf M \cdot \textsf{M} + |Q|_\textsf A \cdot \textsf A$.  
+In terms of field multiplications $\mathsf M$ and substractions/additions $\mathsf A$, step $i$ consumes 
 % Interpolation of m multilinear polynomials for |D_i| - 2 + 1 many points:
 %     m*  |H_i| S for the differences
 %     m * (|D_i| - 2) * |H_i| (M + A) for the domain evals for every z in D_i \setminus\{\pm 1\} 
@@ -653,26 +653,37 @@ In terms of field multiplications $\mathsf M$, substractions $\mathsf S$ and add
 %   |D_i| * |H_i| * (Q_M * M + Q_S * S + Q_A * A)
 % Sum over |H_i| for Q at each point z in D_i
 %  |D_i| * |H_i| * A
-\begin{multline*}
-m\cdot |H_i|\cdot \textsf S + m \cdot (|D| - 1)\cdot |H_{i}| \cdot (\textsf M + \textsf A)
-+  |D|\cdot |H_{i}| \cdot ( |Q|_\textsf M \cdot \textsf{M} +   |Q|_\textsf S \cdot \textsf S + |Q|_\textsf A \cdot \textsf A) 
+\begin{equation*}
+\nu\cdot |H_i|\cdot \textsf A + \nu \cdot (|D| - 1)\cdot |H_{i}| \cdot (\textsf M + \textsf A)
++  |D|\cdot |H_{i}| \cdot ( |Q|_\textsf M \cdot \textsf{M} +  |Q|_\textsf A \cdot \textsf A) 
 \\
 + |D|\cdot |H_{i}| \cdot \textsf A,
 %\\
 %< |D|  \cdot |H_{i}| \cdot \big((m + |Q|_M)\cdot\textsf M +  (m+ |Q|_\textsf S) \cdot\textsf S + (m + |Q|_\textsf A + 1)\cdot \textsf A\big).
-\end{multline*}
+\end{equation*}
 where the last term is for the domain sums.
 Since $\sum_{i=1}^{n} |H_{i}| = |H| - 1$, the overall cost for the prover is bounded by 
+%\begin{equation}
+%\label{e:sumcheck:cost:precise}
+%|H|\cdot \left(1-\frac{1}{|H|}\right)\cdot \big( (d\cdot m + (d+1)\cdot |Q|_\textsf M)\cdot\textsf M +
+% (m + (d + 1)\cdot |Q|_\textsf S) \cdot\textsf S +
+%(d\cdot m + (d+1)\cdot (|Q|_\textsf A + 1))\cdot\textsf A
+%\big).
+%\end{equation}
 \begin{equation}
 \label{e:sumcheck:cost:precise}
-|H|\cdot \left(1-\frac{1}{|H|}\right)\cdot \big( (d\cdot m + (d+1)\cdot |Q|_\textsf M)\cdot\textsf M +
- (m + (d + 1)\cdot |Q|_\textsf S) \cdot\textsf S +
-(d\cdot m + (d+1)\cdot (|Q|_\textsf A + 1))\cdot\textsf A
+|H|\cdot \left(1-\frac{1}{|H|}\right)\cdot \big( (d\cdot \nu + (d+1)\cdot |Q|_\textsf M)\cdot\textsf M +
+(d+1)\cdot (\nu + |Q|_\textsf A) + d)\cdot\textsf A
 \big).
 \end{equation}
-We shall use this formula for the operation counts of our lookup protocol.
-
-
+We shall use the simplified formula
+\begin{equation}
+\label{e:sumcheck:cost}
+|H|\cdot (d+1)\cdot\big( (\nu +  |Q|_\textsf M)\cdot\textsf M +
+ (\nu + |Q|_\textsf A)\cdot\textsf A
+\big)
+\end{equation} 
+for the operation counts of our lookup protocol.
 
 
 
@@ -696,52 +707,70 @@ m(\vec x) =
 \frac{m_f(t(\vec x))}{m_t(t(\vec x))} = \frac{ \sum_{i=1}^M |\{\vec y \in H: f_i(\vec y) = t(\vec x))|}{ |\{\vec y \in H: t(\vec y) = t(\vec x))|}.
 \end{equation}
 %The plot for proving that $\bigcup_{i=1}^M \{f_i(\vec x)\}_{\vec x\in H}\subseteq \{t(\vec x)\}_{\vec x\in H}$ is as follows.
-Given a random challenge $x\sample F$ from the verifier, the prover shows that the rational identity \eqref{e:lookup:fractional:identity} holds at $X= x$, 
-\begin{equation*}
-%\label{e:lookup:fractional:identity}
+Given a random challenge $x\sample F$ from the verifier, the prover shows that the rational identity \eqref{e:lookup:fractional:identity} holds at $X= x$, i.e.
+\begin{equation}
+\label{e:lookup:fractional:sumcheck}
 \sum_{\vec x\in H} \sum_{i=1}^M \frac{1}{x + f_i(\vec x)} -  \frac{m(\vec x)}{x + t(\vec x)} = 0,
-\end{equation*}
+\end{equation}
 whenever evaluation is possible. 
 However, in order to apply the sumcheck protocol we need to turn the fractional expression into a polynomial one.
-For that, one may split the sum into partial ones (of equal size) and provide multilinear helper functions for each sum.
-These helper functions are subject to a domain identity over $H$, the algebraic degree of which corresponds to the number of reciprocals in the sum.  
-The optimal size of the partial sums depends on the used polynomial commitment scheme. 
-The costlier a commitment, the higher the algebraic degree for the domain identity of the helper function can be. 
+For that, the prover splits the sum into partial sums of (roughly) the same number of terms $\ell$, and provides multilinear helper functions for each sum.
+These helper functions are subject to a domain identity of algebraic degree essentially equal to  the number of reciprocal terms in the sum.
+In practice one chooses $\ell$ so that the prover time is minimal for the given number of columns $M$.
+That optimum depends on the used polynomial commitment scheme. 
+The costlier the computation of a commitment, the higher the algebraic degree for the domain identity of the helper function can be. 
 
-Our building block lookup protocol, Protocol \ref{prot:lookup}, saves as much commitments as possible.
-The prover provides a single multilinear helper function for the entire sumcheck expression, at the cost of an overall domain identity of absolute degree $M$, roughly. 
-In Section \ref{s:lookup:soundness} we sketch its soundness, and in Section \ref{s:lookup:optimalM} we give detailed operation counts for the oracle prover. 
-We then estimate  $M_{opt}$ the optimal number of columns for Protocol \ref{prot:lookup}, assuming a commitment scheme in an ordinary sized elliptic curve\footnotemark.
-We stress the fact that our notion of optimality refers to the minimal cost per column of Protocol \ref{prot:lookup}, which is a somewhat simplified cost measure.
-It is accurate when processing larger batches of columns by parallel invocations of the protocol on $M_{opt}$ columns each, a strategy which we consider for simplicity of the presentation.
-In practice one uses a single multiplicity function and a single sumcheck across several invocations of the protocol. 
-
+In Section \ref{s:lookup:small} we describe our batch-column lookup, Protocol \ref{prot:lookup}, and we sketch its soundness analysis in Section \ref{s:lookup:soundness}. 
+In the following Section \ref{s:lookup:cost} we give detailed operations counts for its oracle prover, which we then use to estimate the optimal choice of $\ell$ assuming a commitment scheme which uses an ordinary sized elliptic curve\footnotemark.
+Eventually, we point out the generalization of the lookup argument to vector-valued tables.
 \footnotetext{%
 By ordinary sized we mean a $128$ bit secure curve over a $256$ bit large base field.
 This covers both KZG-like commitments in Barreto-Naehrig curves, and IPA commitments in an ordinary elliptic curve.
 }
 
+%In Section \ref{s:lookup:optimalM} we estimate the optimal $K$, assuming a commitment scheme in an ordinary sized elliptic curve\footnotemark.
+%
+%Our building block lookup protocol, Protocol \ref{prot:lookup}, saves as much commitments as possible.
+%The prover provides a single multilinear helper function for the entire sumcheck expression, at the cost of an overall domain identity of absolute degree $M$, roughly. 
+%In Section \ref{s:lookup:soundness} we sketch its soundness, and
+%We stress the fact that our notion of optimality refers to the minimal cost per column of Protocol \ref{prot:lookup}, which is a somewhat simplified cost measure.
+%It is accurate when processing larger batches of columns by parallel invocations of the protocol on $M_{opt}$ columns each, a strategy which we consider for simplicity of the presentation.
+%In practice one uses a single multiplicity function and a single sumcheck across several invocations of the protocol. 
+%
+
 \subsection{The protocol}
 \label{s:lookup:small}
 
-The prover provides the normalized multiplicity function $m$ as defined in \eqref{e:lookup:m}, and the helper function
+Let $\ell$ be the chosen sum size, $[0,M] = \bigcup_{k=1}^K I_k$ the decomposition of $[0,M]$ into $K=\ceil{\frac{M+1}{\ell}}$ subintervals $I_k = [(k-1)\cdot \ell, k\cdot\ell)\cap [0,M]$, $k=1,\ldots, K$. 
+Let 
 \begin{equation}
-\label{e:lookup:h}
-h(\vec x) = \sum_{i=1}^M \frac{1}{x + f_i(\vec x)} - \frac{m(\vec x)}{x + t(\vec x)},
+\label{e:lookup:hk}
+h_k(\vec x) = \sum_{i\in I_k} \frac{m_i(\vec x)}{\varphi_i(\vec x)}, \quad k= 1,\ldots, K,
 \end{equation}
-subject to the sumcheck $\sum_{\vec x\in H} h(\vec x) = 0$.
-Correctness of $h$ is ensured by the domain identity
+be the respective partial sum of consecutive terms in the overall expression $\frac{m(x)}{x+t(\vec x)} - \frac{1}{x + f_1(\vec x)} - \ldots - \frac{1}{x + f_M(\vec x)}$, where we used the notation 
+\begin{align*}
+m_{0}(\vec x) = m(\vec x), \quad &\varphi_{0}(\vec x) = x + t(\vec x),
+\\
+m_{i}(\vec x) = -1, \quad &\varphi_{i}(\vec x) = x + f_i(\vec x),  \quad  i=1,\ldots, M.
+\end{align*}
+The prover provides the oracles for $h_1, \ldots, h_k$, subject to 
+\[
+\sum_{\vec x \in H} h_1(\vec x) + \ldots + h_{K}(\vec x) = 0,
+\] 
+and the domain identities
 \begin{equation}
 \label{e:lookup:h:identity}
-\big(h(\vec x) \cdot  (x + t(\vec x)) + m(\vec x)\big) \cdot \prod_{i=1}^M (x + f_i(\vec x)) = (x + t(\vec x))\cdot \sum_{i=1}^M \prod_{j\neq i} (x + f_j(\vec x))
+h_k(\vec x) \cdot \prod_{i\in I_k} \varphi_i(\vec x) = \sum_{i\in I_k} m_i(\vec x) \cdot \prod_{j\in I_k\setminus\{i\}} \varphi_j(\vec x)
 \end{equation}
-over $H$, which is reduced to another sumcheck by applying the Lagrange kernel $L_H(\:.\:, \vec z)$ at a randomly chosen $\vec z\sample F^n$.
-Both sumchecks, the one for $h$ and the one for the domain identity, are then combined into a single one, using another randomness $\lambda\sample F$.
+over $H$, the latter are reduced to sumchecks by applying the Lagrange kernel $L_H(\:.\:, \vec z)$ at a randomly chosen $\vec z\sample F^n$.
+All sumchecks are then combined into a single one, using random scalars $\lambda_1,\ldots, \lambda_K\sample F$.
 
 \begin{protocol}[Batch-column lookup over $H=\{\pm 1\}^n$]
 \label{prot:lookup}
-Let $M\geq 1$ be an integer, and $F$ a finite field with characteristic $p > M\cdot 2^n$. 
+Let $M$ be an integer, and $F$ a finite field with characteristic $p > M\cdot 2^n$. 
+Fix any integer $\ell$, $1\leq \ell\leq M+1$, and let $K=\ceil{\frac{M+1}{\ell}}$.
 Given any functions $f_1, \ldots, f_M, t :H\rightarrow F$ on the boolean hypercube $H=\{\pm 1\}^n$, the Lagrange IOP for that $\bigcup_{i=1}^M\{f_i(\vec x) : \vec x\in H\}\subseteq \{t(\vec x) : \vec x\in H\}$ as sets is as follows.
+
 \begin{enumerate} 
 \item
 The prover determines the (normalized) multiplicity function $m:H\rightarrow F$ as defined in \eqref{e:lookup:m},
@@ -750,40 +779,34 @@ The verifier answers with a random sample $x\sample F\setminus \{- t(\vec x) : \
 
 \item
 \label{i:lookup:step1}
-Given the challenge $x$ from the verifier, the prover computes the randomized functions $\varphi_i(\vec x) = x + f_i(\vec x)$, $i=1,\ldots, M$, and $\tau(\vec x) =  x + t(\vec x)$.
-It determines the values for
-\begin{equation}
-\label{e:lookup:h:phi}
-h(\vec x) = \sum_{i=1}^M \frac{1}{\varphi_i(\vec x)} - \frac{m(\vec x)}{\tau(\vec x)},
-\end{equation}
-over $H$, and sends the oracle for $h$ to the verifier.
+Given the challenge $x$ from the verifier, the prover computes the values over $H$ for the partial sums $h_1(\vec x), \ldots, h_K(\vec x)$ as defined above, and sends their oracles to the verifier.
 
 \item
 \label{i:lookup:step2}
-The verifier responds with a random vector $\vec z \sample F^n$ and a batching randomness $\lambda\sample F$.
+The verifier responds with a random vector $\vec z \sample F^n$ and random batching scalars $\lambda_1,\ldots, \lambda_K\sample F$.
 Now, both prover and verifier engage in the sumcheck protocol (Protocol \ref{p:Sumcheck}) for 
 \begin{align*} 
 %\label{e:sumcheckh}
-\sum_{\vec x \in H} Q(L_H(\vec x, \vec z),  h(\vec x), m(\vec x),  \varphi_1(\vec x), \ldots, \varphi_M(\vec x),  \tau(\vec x))&= 0,
+\sum_{\vec x \in H} Q(L_H(\vec x, \vec z),  m(\vec x),  \varphi_0(\vec x), \ldots, \varphi_M(\vec x),  h_1(\vec x),\ldots, h_K(\vec x))&= 0,
 \end{align*}
-where %$Q$ is the degree $M+2$ polynomial
+where  %$Q$ is the degree $M+2$ polynomial
 \begin{equation}
 \label{e:lookup:Q}
-Q(L,h,m, \varphi_1,\ldots, \varphi_M,  \tau) =   
-L \cdot \left((h \cdot \tau + m) \cdot \prod_{i=1}^M \varphi_i - \tau\cdot \sum_{i=1}^M \prod_{j\neq i} \varphi_j\right)
-+  \lambda \cdot h.
+Q(L, m, \varphi_0,\ldots, \varphi_M,  h_1, \ldots, h_K) =   
+\sum_{k=1}^K h_k  + L \cdot \lambda_k \cdot \left(h_k \cdot \prod_{i\in I_k} \varphi_i - \sum_{i\in I_k} m_i\cdot \prod_{j\in I_k\setminus\{i\}} \varphi_j \right),
 \end{equation}
+with $m_0 = m$, and all other $m_i = -1$, $i=1,\ldots, M$.
 The sumcheck protocol outputs the expected value $v$ for the multivariate polynomial 
 \begin{equation}
 \label{e:lookup:QinX}
 \begin{aligned}
-Q(L_H(\vec X, \vec z), h(\vec X), m(\vec X), \varphi_1(\vec X),\ldots, \varphi_M(\vec X),  \tau(\vec X))
+Q(L_H(\vec X, \vec z), m(\vec X), \varphi_0(\vec X),\ldots, \varphi_M(\vec X),  h_1(\vec X),\ldots, h_K(\vec X))
 \end{aligned}
 \end{equation}
 at $\vec X=\vec r$ sampled by the verifier in the course of the protocol.
 
 \item
-The verifier queries $[f_1], \ldots, [f_M], [t], [m], [h]$ for their inner product with $L_H(\:.\:,\vec r)$, and uses the answers 
+The verifier queries $[m], [t], [f_1], \ldots, [f_M], [h_1], \ldots, [h_K]$ for their inner product with $L_H(\:.\:,\vec r)$, and uses the answers 
 to check whether \eqref{e:lookup:QinX} equals the expected value $v$ at $\vec X = \vec r$. 
 (The value $L_H(\vec r, \vec z)$ is computed by the verifier.)
 \end{enumerate}
@@ -794,28 +817,25 @@ to check whether \eqref{e:lookup:QinX} equals the expected value $v$ at $\vec X 
 We imposed the condition $x\notin \{- t(\vec x)\}_{\vec x \in H}$ merely for completeness. 
 However in some applications it may be not be desirable, or even not possible, to sample $x$ from outside the range of $t$.
 There are several ways to handle this.
-One can simply omit the constraint on $x$, letting the verifier sample $x\sample F$ and the prover set $h$ arbitrary whenever \eqref{e:lookup:h:phi} is not defined.
+One can simply omit the constraint on $x$, letting the verifier sample $x\sample F$ and the prover set $h_0$ arbitrary whenever \eqref{e:lookup:hk} is not defined.
 This comes at no extra cost, but the obtained protocol is only overwhelmingly complete. 
 That is, with a probability of at most $\frac{|H|}{|F|}$ in the verifier randomness $x$, the honest prover does not succeed.
 In practice this is often considered acceptable, and many lookup implementations have a non-zero completeness error. 
-Whenever this is not acceptable, one may modify the domain identity \eqref{e:lookup:h:identity} to 
+Whenever this is not acceptable, one may modify the domain identity for $h_0$ to 
 \begin{equation}
 \label{e:lookup:h:identity:complete}
-\left((h \cdot \tau + m) \cdot \prod_{i=1}^M \varphi_i - \tau\cdot \sum_{i=1}^M \prod_{j\neq i} \varphi_j\right)\cdot \tau\cdot  \prod_{i=1}^M \varphi_i  = 0
+\left(h_0 \cdot \prod_{i\in I_0}\varphi_i - \sum_{i \in I_0} m_k\cdot \prod_{j\neq i} \varphi_j\right)\cdot   \varphi_0  = 0
 \end{equation}
-over $H$, which imposes no condition on $h(\vec x)$ whenever $\tau(\vec x)= 0$. 
-However, this approach comes at the cost of almost doubling the absolute degree of $Q$.
+over $H$, which imposes no condition on $h_0$ whenever $\varphi_0(\vec x)= 0$. 
+However, this approach comes at the cost of a slight increase  in the degree of $Q$ with respect to $\varphi_0$.
 \end{rem}
 
 Let us point out two variations of Protocol \ref{prot:lookup}.
 In the single-column case $M=1$ the lookup argument can be turned into a multiset check for the ranges of $f_1$ and $t$, by setting $m$ as the constant function $m(\vec x) = 1$.
-In this case only $h$ needs to be provided by the prover.
-More interestingly, Protocol \ref{prot:lookup} is easily extended to a proof of range equality, showing that $\bigcup_{i=1}^M \{f_i(\vec x)\}_{\vec x\in H} = \{\tau (\vec x)\}_{\vec x\in H}$ as sets.
-For this the prover additionally shows that $m \neq 0$ over $H$, which is done by providing another auxiliary function $h_m: H\rightarrow F$ subject to $h_m\cdot m = 1$ over $H$.
+In this case only $h_0$ needs to be provided by the prover.
+More interestingly, Protocol \ref{prot:lookup} is easily extended to a proof of range equality, showing that $\bigcup_{i=1}^M \{f_i(\vec x)\}_{\vec x\in H} = \{ t(\vec x)\}_{\vec x\in H}$ as sets.
+For this the prover additionally shows that $m \neq 0$ over $H$, which is done by providing another auxiliary function $g: H\rightarrow F$ subject to $g\cdot m = 1$ over $H$.
 However, we are not aware of any application of this fact.
-
-
-
 
 
 
@@ -829,56 +849,71 @@ We merely sketch it.
 The univariate rational lookup identity \eqref{e:lookup:fractional:identity} is turned into a polynomial identity of degree at most $|H|\cdot (M+1) - 1$ by multiplying it with the common denominator  
 \begin{equation}
 \label{e:lookup:common:denominator}
-p(X) = \prod_{\vec x\in H} (X + t(\vec x)) \cdot \prod_{i=1}^M (X + f_i(\vec x)).
+\prod_{\vec x\in H} (X + t(\vec x)) \cdot \prod_{i=1}^M (X + f_i(\vec x)).
 \end{equation}
-Since we sample $x$ from a set of size at least $|F|-|H|$, the soundness error of Step \ref{i:lookup:step1} of the protocol is at most 
+Since we sample $x$ from a set of size at least $|F|-|H|$, the soundness error this step is at most 
 \begin{equation}
 \label{e:lookup:epsilon1}
 \varepsilon_1 \leq \frac{(M+1)\cdot |H| - 1 }{|F|-|H|}.
 \end{equation}
-The soundness error due to the reduction of the domain identity  \eqref{e:lookup:h:identity}  to the Lagrange kernel based sumcheck is 
+The soundness error due to the reduction of the domain identities  \eqref{e:lookup:h:identity}  to the Lagrange kernel based sumcheck is altogether
 \[
-\varepsilon_2 \leq \frac{1}{|F|},
+\varepsilon_2 \leq \frac{K}{|F|},
 \]
 as scalar products with the Lagrange kernel translate to point evaluation of the multilinear extension.
+Finally, the batching step of the $K+1$ sumchecks has soundness error $\varepsilon_3 = \frac{1}{|F|}$.
 This yields the following theorem. 
 
 \begin{thm}
 \label{thm:lookup:soundness}
  The interactive oracle proof described Protocol \ref{prot:lookup} has soundness error
 \[
-\varepsilon < \frac{(M+1)\cdot |H| - 1 }{|F|-|H|} + \varepsilon_{sumcheck},
+\varepsilon < \frac{(M+1)\cdot |H| - 1 }{|F|-|H|} + \frac{K+1}{|F|} + \varepsilon_{sumcheck},
 \]
-where $\varepsilon_{sumcheck}$ is the soundness error of the sumcheck argument \eqref{e:BatchSumcheckSoundness} over $H$ for a multivariate polynomial in $M+4$ variables with maximum individual degree $M+3$.
+where $\varepsilon_{sumcheck}$ is the soundness error of the sumcheck argument \eqref{e:SumcheckSoundness} over $H$ for a multivariate polynomial in $M+4$ variables with maximum individual degree $M+3$.
 \end{thm}
 %\begin{rem}
 %The $\bigO M$-variant described in Section \ref{prot:lookup} has same soundness error, with $\varepsilon_{sumcheck}$ being the soundness error of the sumcheck argument over the extended hypercube of size $M\cdot |H|$ for a multivariate polynomial in $\nu=5$ variables and maximum individual degree $4$. 
 %\end{rem}
 
 
-\subsection{Computational cost and optimal batch size}
+\subsection{Computational cost and optimal sum size}
 \label{s:lookup:cost}
 
-Let us determine the prover cost of Protocol \ref{prot:lookup}.
-The polynomial $Q$ from \eqref{e:lookup:Q} has $\nu= M + 4$ variables, and absolute degree $d = M + 3$.
-Let us describe a domain evaluation strategy for the values of $Q$, which makes use of batch inversion. 
-This strategy allows us to evaluate $Q$ much more efficiently than using \eqref{e:lookup:Q}, but demands a modification of the sumcheck operation count formula \eqref{e:sumcheck:cost:precise}.
+%Let us determine the prover cost of Protocol \ref{prot:lookup}.
+The polynomial $Q$ from \eqref{e:lookup:Q} has $\nu= M + K + 3$ variables, and absolute degree $d = \ell + 2$.
+Let us describe a domain evaluation strategy for $Q$ which uses of batch inversion. 
+This strategy allows us to evaluate $Q$ much more efficiently than using \eqref{e:lookup:Q}, but demands a modification of the sumcheck operation count formula \eqref{e:sumcheck:cost}.
 %Let us elaborate an evaluation strategy for $Q$, which makes use of 
 % Arithmetic complexities, using the inverses of phi_1, ..., phi_{M-1}
 % 	M  - 1 multiplications for p = phi_1 * ... * phi_{M-1} * phi_M
 % 	M - 1 multiplications to obtain the partial products p_i = \prod_{j\neq i} \phi_j for i=1,..,M-1. (the product p_M is already known)
 %	2 muls for m * p + tau * (h * p + \sum_{i} p_i)
 %	another 2 muls for the product with L and lambda.
-Assume that the inverses of $\varphi_1, \ldots, \varphi_{M-1}$ are given.
-Then we may evaluate $Q$ by the fractional representation
-\begin{align*}
-%Q &= L\cdot  \prod_{i=1}^M\varphi_i\cdot \left(m + \tau\cdot \left(h  - \sum_{i=1}^M \frac{1}{\varphi_i} \right) \right) + \lambda\cdot h,
-%\\
-Q &= L\cdot  \prod_{i=1}^{M-1}\varphi_i\cdot \left(\varphi_M\cdot m + \tau\cdot \left(\varphi_M\cdot h - \left(\sum_{i=1}^{M-1} \frac{1}{\varphi_i} +1 \right)\right) \right) + \lambda\cdot h.
-\end{align*}
-This costs  $M + 4$ multiplications, one substraction, and $M+1$ additions, and hence
-the arithmetic complexities are $|Q_\mathsf M| =  M +  4$, $|Q_\mathsf S| = 1$, $|Q_\mathsf A| = M + 1$.
-Now, to attribute the inverses in formula \eqref{e:sumcheck:cost:precise}, we increase the multiplicative complexity by $3\cdot (M - 1)$, which represents the fractional cost of the batch inversion\footnotemark of $\varphi_1, \ldots, \varphi_{M-1}$. 
+Assume that in each group $I_k$ the inverses of $\varphi_i$ are given, except for one distinct $i_k\in I_k$.
+Then we may evaluate the domain identity terms in $Q$ by the fractional representation
+\begin{equation*}
+h_k \cdot \prod_{i\in I_k} \varphi_i - \sum_{i\in I_k} m_i\cdot \prod_{j\in I_k\setminus\{i\}} \varphi_j = 
+ \prod_{i\in I_k\setminus\{i_k\}} \varphi_j \cdot \left( \varphi_{i_k} \cdot \left( h_k - \sum_{i\in I_k\setminus\{i_k\}} \frac{m_i}{\varphi_i}\right) - m_{i_k} \right)
+%\prod_{i\in I_k} \varphi_i \cdot \left( h_k - \sum_{i\in I_k} \frac{m_i}{\varphi_i}\right).
+\end{equation*}
+For $k\geq 2$, all involved $m_i = -1$, and we have 
+\begin{equation}
+\label{e:lookup:cost:k2}
+ \prod_{i\in I_k\setminus\{i_k\}} \varphi_j \cdot \left( \varphi_0 \cdot \left( h_k + \sum_{i\in I_k\setminus\{i_k\}} \frac{1}{\varphi_i}\right) + 1 \right),
+\end{equation}
+regardless of the choice of $i_k$. 
+For the first group $k=1$, we chose $i_1 = 0$, so that 
+\begin{equation}
+\label{e:lookup:cost:k1}
+\prod_{i\in I_1\setminus\{0\}} \varphi_j \cdot \left( \varphi_0 \cdot \left( h_k + \sum_{i\in I_1\setminus\{0\}} \frac{1}{\varphi_i}\right) - m \right).
+\end{equation}
+In both cases \eqref{e:lookup:cost:k1} and \eqref{e:lookup:cost:k2} the evaluation costs are $\ell\cdot \mathsf M + \ell \cdot\mathsf A$, counting substractions as additions. 
+Henceforth $Q$ is evaluated in overall
+\begin{equation}
+K \cdot (\ell  +2) \cdot \mathsf M + K\cdot (\ell+1)\cdot \mathsf A.
+\end{equation}
+Now, to attribute the inverses in formula \eqref{e:sumcheck:cost}, we increase the multiplicative complexity by $3\cdot (M - K)$, which represents the fractional cost of the batch inversion\footnotemark of all the $\varphi_i$ except one in each of the groups. 
 \footnotetext{%
 Batch, or Montgomery inversion, of a sequence $(a_i)_{i=1}^N$ computes the inverses of $a_i^{-1}$ by recursively computing the cumulative products $p_i = a_1\cdot\ldots \cdot a_n$, $i=0,\ldots,n$, then calculating their inverses $q_i = \frac{1}{p_i}$ in a reverse manner   
 starting with $q_n = \frac{1}{p_n}$, and putting $q_{i-1} = q_i \cdot a_i$, where $i$ goes from $n$ down to $1$. 
@@ -887,178 +922,57 @@ The overall cost of the batch inversion is $3\cdot (N-1)$ multiplications and a 
 }%
 This yields the following equivalent complexities
  \[
-|Q_\mathsf M| = 4\cdot M + 1 , |Q_\mathsf S| = 1, |Q_\mathsf A| = M + 1,
+|Q_\mathsf M| = 3\cdot M + K\cdot (\ell - 1), \quad |Q_\mathsf A| = K\cdot (\ell+1),
 \]
-which we may plug into formula \eqref{e:sumcheck:cost:precise}.
+which we may plug into formula \eqref{e:sumcheck:cost}.
 
-Therefore the prover cost of Protocol \ref{prot:lookup} is as follows:
-Given the values of $f_1, \ldots, f_M$ and $t$ over $H$, computing $\varphi_1 = x + f_1, \ldots, \phi_M = x + f_M$,  $\tau = x + t$ costs $|H|\cdot (M+ 1) \cdot\mathsf A$, and their reciprocals $\frac{1}{\varphi_1},  \ldots, \frac{1}{\varphi_M}$, $\frac{1}{\tau}$ are obtained within $3\cdot |H| \cdot (M+1) \cdot\mathsf M$, using batch inversion. 
-With these reciprocals we obtain the values for
-\[
-h = \sum_{i=1}^M \frac{1}{\varphi_i} - \frac{m}{\tau} 
-\]
-by $|H|\cdot (1\cdot \mathsf S +(M-1)\cdot\mathsf A)$. 
-By the remark following Lemma \ref{lem:Lagrange}, the values for $L_H(\vec X, \vec y)$ over $H$ are obtained within $|H|\cdot (\mathsf M + \mathsf A)$ operations. 
+The prover cost of Protocol \ref{prot:lookup} is as follows:
+Given the values of $t$ and $f_1, \ldots, f_M$  over $H$, computing $\varphi_0 = x + t$ and $\varphi_1 = x + f_1, \ldots, \varphi_M = x + f_M$ costs $|H|\cdot (M+ 1) \cdot\mathsf A$, and their reciprocals $\frac{1}{\varphi_0},  \ldots, \frac{1}{\varphi_M}$ are obtained within $3\cdot |H| \cdot (M+1) \cdot\mathsf M$, using batch inversion. 
+With these reciprocals we obtain the values for $h_1, \ldots, h_K$ within overall $|H|\cdot (\mathsf M + K\cdot (\ell - 1) \cdot \mathsf A)$. 
+By the remark following Lemma \ref{lem:Lagrange}, the values for $L_H(\vec X, \vec y)$ over $H$ are computed in $|H|\cdot (\mathsf M + \mathsf A)$ operations. 
 Hence the total cost of the preparation phase is
-\[
-|H|\cdot ((3\cdot M + 4)\cdot\mathsf M + 1\cdot\mathsf S + (2\cdot M + 1) \cdot\mathsf A.
-\]
-According to \eqref{e:sumcheck:cost:precise} the sumcheck costs  
 \begin{equation*}
-|H| \cdot \left(1-\frac{1}{|H|}\right)\cdot \big((5\cdot M^2 + 24 \cdot M + 16) \cdot\textsf M + (2\cdot M + 8)\cdot\textsf S + (2\cdot M^2 + 13\cdot M + 20) \cdot \textsf A\big).
+%\label{e:lookup:cost:prep}
+|H|\cdot ((3\cdot M + 5)\cdot\mathsf M + (M + K\cdot (\ell-1)+ 2) \cdot\mathsf A.
 \end{equation*}
-However, as we may reuse the reciprocals of $\varphi_1,  \ldots, \varphi_{M-1}$ in the first step of the sumcheck, we correct the sumcheck cost by substracting $|H|\cdot (3\cdot (M-1))$. 
-Neglecting the $\nicefrac{1}{|H|}$-term, the overall cost of the prover is 
+According to \eqref{e:sumcheck:cost} the sumcheck costs  
+\begin{equation*}
+%\label{e:lookup:cost:sumcheck}
+|H| \cdot  (\ell + 3)\cdot \big( (4\cdot M+ 3 + \ell \cdot K)  \cdot\textsf M + 
+	(M + 3  + (\ell + 2)\cdot K) \cdot \textsf A\big).
+\end{equation*}
+However, as we may reuse the reciprocals of $\varphi_0,  \ldots, \varphi_{M}$ in the first step of the sumcheck, we may correct the sumcheck cost by substracting $|H|\cdot 3\cdot (M - K)$. 
+The total costs of the oracle prover are 
+\begin{itemize}
+\item
+arithmetic costs of
 \begin{equation}
 \label{e:lookup:cost}
-|H| \cdot  \big((5\cdot M^2 + 24 \cdot M + 23) \cdot\textsf M 
-+ (2\cdot M + 9)\cdot\textsf S 
-+ (2\cdot M^2 + 15\cdot M + 21) \cdot \textsf A\big),
+|H| \cdot \left(K+ 5  + (\ell + 3)\cdot (4\cdot M+ 3 + \ell \cdot K) \right) \cdot \mathsf M,
 \end{equation}
-whereas it provides only two $H$-sized oracles. 
-The cost is $\bigO{|H|}$ but depends quadratically in $M$ the number of columns to be looked up. 
-This quadratic occurence is due to the fact that both, the number of function as well as the degree of $Q$ grow linearly in $M$. 
-
-
-%\subsection{A reference variant of Protocol \ref{prot:lookup}}
-%\label{s:lookup:large}
-%
-%We sketch the aforementioned variant of Protocol \ref{prot:lookup}, which uses the opposite batching strategy.
-%Besides the multiplicity function $m$, the prover provides $M+1$ helper functions, one for each reciprocal
-%$
-%h_i (\vec x) = \frac{1}{x + f_i(\vec x)},
-%$
-%$i=1,\ldots, M$, and another one for
-%$
-%h_{t}(\vec x) = \frac{1}{x + t(\vec x)}.
-%$
-%Correctness of the helper functions is enforced by the domain identities
-%\[
-%h_i(\vec x) \cdot (x + f_i(\vec x)) - 1 = 0, \quad i =1,\ldots, M,
-%\]
-%and
-%\[
-%h_{t}(\vec x) \cdot (x + t(\vec x)) - 1 = 0.
-%\]
-%The sumcheck is now of low degree, 
-%\[
-%\sum_{\vec x \in H} \sum_{i=1}^{M} h_i(\vec x) - h_t(\vec x)\cdot m(\vec x) = 0.
-%\]
-%The domain identities are again turned into a sumchecks by applying the Lagrange kernel $L_{H}(\:.\:, \vec z)$, where $\vec z\sample F^n$.
-%Combining the sumchecks using the powers of a random $\lambda\sample F$ leads to the overall sumcheck  
-%\begin{align*} 
-%%\label{e:sumcheckh}
-%\sum_{\vec x \in H} Q(L_H(\vec x, \vec z),  \varphi_1(\vec x),\ldots, \varphi_M(\vec x), \tau(\vec x), h_1(\vec x),\ldots h_{M}(\vec x), h_t(\vec x), m(\vec x))&= 0,
-%\end{align*}
-%with
-%\begin{equation}
-%\label{e:lookup:Q:linear}
-%\begin{aligned}
-%Q(L, \varphi_1,\ldots, \varphi_M, \tau, h_1,&\ldots, h_M, h_t) =   
-%\\
-%&
-%\sum_{i=1}^{M} h_i - m\cdot  h_t 
-%+   L\cdot\left(\sum_{i=1}^{M}\lambda^i \cdot (h_i \cdot \varphi_i - 1)+ \lambda^{M+1} \cdot (h_{t}\cdot\tau - 1) \right).
-%\end{aligned}
-%\end{equation}
-%The prover provides an overall equivalent of $M+2$ oracles of size $|H|$. 
-%The sumcheck polynomial $Q$ has  $\nu= 2\cdot (M + 2)$ variables but its absolute degree $d=3$ is independent of the number of columns.
-%The arithmetic complexities of $Q$ are $|Q_\mathsf M|=  2\cdot (M+2)$, $|Q_\mathsf S|= M + 2$, $|Q_\mathsf A|=2\cdot M$.
-%
-%\subsubsection{Computational cost}
-%
-%The arithmetic cost of the protocol is as follows. 
-%Computing the values of $h_1, \ldots, h_M$ and $h_t$ over $H$ using batch inversion costs 
-%\[
-%(M+1)\cdot |H| \cdot(3 \cdot \mathsf M + \mathsf A),
-%\]
-%and the values for $L_{H}(\:.\:, \vec z)$ over $H$ are determined in  $|H|\cdot (\mathsf M + \mathsf A)$.
-%According to \eqref{e:sumcheck:cost:precise} the overall sumcheck costs
-%\[
-%|H| \cdot \left(1-\frac{1}{|H|}\right)\cdot \big(14\cdot (M+2) \cdot \textsf M + 6\cdot (M+2)\textsf S + (7\cdot M +16) \cdot \textsf A\big).
-%\]
-%Neglecting the $\frac{1}{|H|}$-term, the overall cost for the prover is
-%\begin{equation}
-%\label{e:lookup:large:cost}
-%|H|\cdot ((17\cdot M + 32)\cdot\mathsf M + (6\cdot M + 12)\cdot\mathsf S + (15\cdot M + 18)\cdot\mathsf A),
-%\end{equation}
-%but the prover needs to provide the oracles for one function over  a domain of size $M\cdot|H|$, and one over $H$. 
+neglecting field additions and substractions, and
+\item 
+oracle costs of 
+\begin{equation}
+K+1 = \ceil{\frac{M+1}{\ell}} + 1
+\end{equation} 
+oracles of size $|H|$.
+\end{itemize}
+%The cost is $\bigO{|H|}$ but depends quadratically in $M$ the number of columns to be looked up. 
+%This quadratic occurence is due to the fact that both, the number of function as well as the degree of $Q$ grow linearly in $M$. 
 
 
 
-%\subsubsection{A reference variant of low algebraic degree}
-%\label{s:lookup:large}
-%
-%To determine the optimal batch size $M$ for Protocol \ref{prot:lookup}, we discuss a $\bigO{M}$-variant of it which uses the opposite batching strategy.
-%%The polynomial $Q$ from \eqref{e:lookup:Q} has $\bigO{M}$ variables, and absolute degree $\bigO{M}$.
-%%This leads to a cost of the overall sumcheck which is \textit{quadratic} in $M$, and it will depend on the size of $M$ whether Protocol \ref{prot:lookup} performs better than a strategy which is linear in $M$, but which uses a linear number of oracles.
-%%Instead of doing an $M$-fold application of Protocol \ref{prot:lookup} for a single column, we will compare with following optimized strategy.
-%Assume that $M=2^m$, so that we can index the columns to be looked up by $f_{\vec z}$, where $\vec z\in \{\pm 1\}^m$.
-%We patch these columns into a single function $f$ over the extended hypercube $\bar H = \{\pm 1\}^m \times H$ by
-%\[
-%f(\vec y, \vec x) = \sum_{\vec z\in \{\pm 1\}^m} L_{m}(\vec y, \vec z)\cdot f_{\vec z}(\vec x),
-%\]
-%where $L_m(\vec y, \vec z)$ is the Lagrange polynomial for $\{\pm 1\}^m$. 
-%Given the random challange $x\sample F\setminus \{-t(\vec x) : \vec x\in H\}$ from the verifier, the prover supplies an oracle for the values of
-%\begin{equation}
-%\label{e:lookup:large:h}
-%h(\vec y, \vec x) = \frac{1}{x + f(\vec y, \vec x)} - \frac{\tilde m(\vec x)}{x + t(\vec x)}
-%\end{equation}
-%over the extended hypercube, where $\tilde m(\vec x)= \frac{1}{2^m}\cdot m(\vec x)$. 
-%The supplementary function $h$ is subject to the domain identity
-%%\[
-%%h(\vec y, \vec x) \cdot (x + f(\vec y, \vec x))\cdot (x + t(\vec x)) = x + t(\vec x)  - \tilde m(\vec x)\cdot (x + f(\vec y, \vec x))
-%%\]
-%\[
-%\big(h(\vec y, \vec x) \cdot (x + t(\vec x)) + \tilde m(\vec x) \big) \cdot (x + f(\vec y, \vec x)) - (x + t(\vec x)) = 0
-%\]
-%over $\bar H$, and 
-%\[
-%\sum_{\vec y \in \{\pm 1\}^m}\sum_{\vec x\in H} h(\vec y, \vec x) = 0.
-%\]
-%Again, the domain identity is turned into a sumcheck over $\bar H$ by applying the Lagrange kernel $L_{\bar H}(\:.\:, \vec z)$, where $\vec z$ is now sampled from $F^{m + n}$.
-%Combining the two sumchecks using a random $\lambda\sample F$ leads to the overall sumcheck  
-%\begin{align*} 
-%%\label{e:sumcheckh}
-%\sum_{\vec y \in\{\pm 1\}^m}\sum_{\vec x \in H} Q(L_{\bar H}((\vec y,\vec x), \vec z),  h(\vec y, \vec x), \tilde m(\vec x),  \varphi(\vec y, \vec x), \tau(\vec x))&= 0,
-%\end{align*}
-%over $\bar H=\{\pm 1\}^m \times H$, with $\varphi(\vec y, \vec x) = x + f(\vec y, \vec x)$ and $\tau(\vec x)= x + t(\vec x)$, and where 
-%$Q$ is 
-%\begin{equation}
-%\label{e:lookup:Q:linear}
-%Q(L,h, \tilde m, \varphi, \tau) =   
-%L \cdot \left((h \cdot \tau +\tilde  m) \cdot \varphi - \tau \right)
-%+  \lambda \cdot h.
-%\end{equation}
-%In this variant, providing $h$ amounts to $M$ oracles over $H$, yielding an overall equivalent of $M+1$ oracles of size $|H|$. 
-%However, $Q$ has only $\nu=5$ variables and its absolute degree $d=4$ is independent of the number of columns.
-%Its arithmetic complexities  $|Q_\mathsf M|= 4$, $|Q_\mathsf S|= 1$, $|Q_\mathsf A|=2$.
-%%\end{rem}
-%
-%Let us determine the prover cost of that reference protocol. 
-%Computing the values of $h$ over $\bar H$ using batch inversion costs 
-%\[
-%M\cdot |H| \cdot(3 \cdot \mathsf M + \mathsf A),
-%\]
-%and the values for $L_{\bar H}(\:,\:, \vec z)$ over $\bar H$ are determined in $M\cdot |H|\cdot (\mathsf M + \mathsf A)$.
-%According to \eqref{e:sumcheck:cost:precise} the overall sumcheck costs
-%\[
-%M\cdot |H| \cdot \left(1-\frac{1}{M\cdot |H|}\right)\cdot \big(40 \cdot \textsf M + 10\cdot\textsf S + 35 \cdot \textsf A\big).
-%\]
-%Neglecting the $\frac{1}{M\cdot |H|}$-term, the overall cost for the prover is
-%\begin{equation}
-%\label{e:lookup:large:cost}
-%M\cdot |H|\cdot (44\cdot\mathsf M + 10\cdot\mathsf S + 37\cdot\mathsf A),
-%\end{equation}
-%but the prover needs to provide the oracles for one function over  a domain of size $M\cdot|H|$, and one over $H$. 
+\subsubsection{The optimal choice of $\ell$}
 
-
-\subsection{The optimal batch size}
-\label{s:lookup:optimalM}
-
-To determine the optimal number of columns $M$ for Protocol \ref{prot:lookup}, we compare its prover costs with those of the reference protocol from Section \ref{s:lookup:large}.
-For taking the oracle costs into account, we rely on the benchmarks from Table \ref{tab:pippenger} which measure the equivalent number of field multiplication for a multi-scalar multiplication in an ordinary-sized elliptic curve with $128$ bit security.
-
+Let us discuss the concrete impact of the partial sum size $\ell$ on the overall prover cost. 
+%First of all, let us illustrate the two extreme cases. 
+If $\ell = 1$, then each reciprocal is given a helper function, resulting in $M + 1$ additional commitments (besided the one for $m$) but a very low degree of $Q$, $d= 3$  .
+Increasing $\ell$ reduces the number of commitments, but comes at the cost of a growing degree.
+The most extreme case is $\ell = M+1$, where the prover provides a single additional commitment besides $m$, but needs to cope with a degree of $d= M + 3$, resulting in sumcheck costs which are quadratic in $M$.
+The optimal choice for $\ell$ is between these two cases, but depends on the concrete polynomial commitment scheme.
+We consider elliptic curve based commitments. 
+To take the commitment costs into account we rely on the benchmarks from Table \ref{tab:pippenger} which measure the equivalent number of field multiplications for a multi-scalar multiplication in an ordinary-sized elliptic curve of $128$ bit security.
 
 
 \begin{table}
@@ -1084,30 +998,27 @@ $\log N$ &  Pippenger of size $N$ & $2^8\cdot N$ field mult. & equivalent field 
 \end{center}
 \end{table}
 
-
-Based on these numbers, we where looking for $M$ where the ratio of the overall number of  field multiplications of the two protocols,  
-\begin{equation}
-\label{e:mv:ratio}
-r=\nicefrac{\mathsf M(\text{Section \ref{s:lookup:large}})}{\mathsf M (\text{Protocol \ref{prot:lookup}})},
-\end{equation}
-is maximal.
-These optimal batch sizes $M$, and their maximum ratios are given in Table \ref{t:mv:optimalM}.
-
 \begin{table}
 \caption{%
-The number of columns $M$ where the advantage of Protocol \ref{prot:lookup} over the reference variant from Section \ref{s:lookup:large} is maximal. 
-The numbers are based on the operation counts \eqref{e:lookup:cost} and \eqref{e:lookup:large:cost} for the oracle prover, and the benchmarks for a multi-scalar multiplication, Table \ref{tab:pippenger}.
+An estimate of the partial sum size $\ell$ in Protocol \ref{prot:lookup}, which minimizes the prover cost. 
+The numbers are based on the operation counts \eqref{e:lookup:cost} for the oracle prover and the benchmarks for a multi-scalar multiplication in the Pallas curve, Table \ref{tab:pippenger}.
 }
-\label{t:mv:optimalM}
+\label{tab:lookup:optimal}
 \vspace*{0.5cm}
 \centering
-\begin{tabular} {|c|c|c|c|c|}
+\begin{tabular} {|c|c|c|c|c|c|c|c|c|}
 \hline
-$\log|H|$ & 12 & 14 & 16 & 18
+\multirow{2}{*}{$\log N$} & \multicolumn{4}{c|}{$\ell$} & \multicolumn{4}{c|}{field mult. per col.} 
+\\\cline{2-9}
+& $M=10$ & $M=20$ & $M=70$ & $M=\infty$ & $M=10$ & $M=20$ & $M=70$ & $M=\infty$
 \\\hline
-$M$ & $13$ & $12$ & $11$ & $10$
+12 & 11 & 11 & 11 & 11 & $N\cdot 188$ & $N\cdot 158$ &  $N\cdot 135$ &  $N\cdot 120$
 \\
-$r$ \text{as in \eqref{e:mv:ratio}} & $3.8$ & $3.4$ & $3.2$ & $3.0$
+14 & 11 & 11 & 9 & 9 & $N\cdot 170$ & $N\cdot 144$ &  $N\cdot 120$ &  $N\cdot 112$
+\\
+16 & 11 & 11 & 9 & 9 & $N\cdot 155$ & $N\cdot 132$ &  $N\cdot 112$&  $N\cdot 104$
+\\
+18 & 11 & 11 & 8 &  8 &  $N\cdot 147$ & $N\cdot 126$  &  $N\cdot 106$ &  $N\cdot 99$
 \\\hline
 \end{tabular}
 \end{table}
@@ -1118,41 +1029,35 @@ $r$ \text{as in \eqref{e:mv:ratio}} & $3.8$ & $3.4$ & $3.2$ & $3.0$
 %%
 %% Poseidon hash comparison
 %%
-As a lower bound for elliptic curve based schemes, we take the number of field operations for $x^5$-Poseidon with rate $r=2$, capacity $c=1$, $R_F=8$ full rounds and $R_p=57$ partial rounds. (These are the parameters from \cite{Poseidon} for a security level of $128$ bits over a $255$ bit large base field.) 
-Each permutation, which processes $r=2$ many elements costs
-$
-604\cdot\mathsf M + 591\cdot\mathsf A, 
-$ 
-using the optimized evaluation strategy from Appendix B in \cite{Poseidon}.
-Hence computing the hash of two functions over $H$ costs
-\[
-|H|\cdot (604\cdot\mathsf M + 591\cdot\mathsf A). 
-\]
-Therefore a $M$ single-column lookups cost 
-\begin{equation}
-\label{lookup:cost:Mcolumn:naive}
-|H|\cdot ((604\cdot M + 42)\cdot\mathsf M + 10\cdot\mathsf S + (591\cdot M + 30)\cdot\mathsf A),
-\end{equation}
-and the batch-column lookup for $M$ columns
-\begin{equation}
-\label{lookup:cost:Mcolumn:batch}
-|H| \cdot  \big((5\cdot M^2 + 19 \cdot M + 1226) \cdot\textsf M 
-+ (2\cdot M + 8)\cdot\textsf S 
-+ (2\cdot M^2 + 13\cdot M + 621) \cdot \textsf A\big).
-\end{equation}
-Comparing \eqref{lookup:cost:Mcolumn:naive} and \eqref{lookup:cost:Mcolumn:batch} yields  a maximum speedup by a factor of $5$ for $M=11$, more than double as fast for $3\leq M\leq 58$, and a break-even point at about $M=124$ columns.
-
-
-
-%Compared to the cost of the univariate lookup PIOP (see Appendix \ref{s:uv:lookup}), the multivariate lookup has its break-even point at about $\log |H| \approx 2.3$.
-%However, this is without taking into account that in the univariate case a total of $3$ polynomials of size $|H|$ need to be provided, which is one more than in our protocol (neglecting the overall quotient polynomial). 
-%Thus it is safe to assume that Protocol \ref{prot:pa} is throughout faster than the univariate case, and we expected it to be more than three times as performant at $\log|H| \approx 12$.
+%As a lower bound for elliptic curve based schemes, we take the number of field operations for $x^5$-Poseidon with rate $r=2$, capacity $c=1$, $R_F=8$ full rounds and $R_p=57$ partial rounds. (These are the parameters from \cite{Poseidon} for a security level of $128$ bits over a $255$ bit large base field.) 
+%Each permutation, which processes $r=2$ many elements costs
+%$
+%604\cdot\mathsf M + 591\cdot\mathsf A, 
+%$ 
+%using the optimized evaluation strategy from Appendix B in \cite{Poseidon}.
+%Hence computing the hash of two functions over $H$ costs
+%\[
+%|H|\cdot (604\cdot\mathsf M + 591\cdot\mathsf A). 
+%\]
+%Therefore a $M$ single-column lookups cost 
+%\begin{equation}
+%\label{lookup:cost:Mcolumn:naive}
+%|H|\cdot ((604\cdot M + 42)\cdot\mathsf M + 10\cdot\mathsf S + (591\cdot M + 30)\cdot\mathsf A),
+%\end{equation}
+%and the batch-column lookup for $M$ columns
+%\begin{equation}
+%\label{lookup:cost:Mcolumn:batch}
+%|H| \cdot  \big((5\cdot M^2 + 19 \cdot M + 1226) \cdot\textsf M 
+%+ (2\cdot M + 8)\cdot\textsf S 
+%+ (2\cdot M^2 + 13\cdot M + 621) \cdot \textsf A\big).
+%\end{equation}
+%Comparing \eqref{lookup:cost:Mcolumn:naive} and \eqref{lookup:cost:Mcolumn:batch} yields  a maximum speedup by a factor of $5$ for $M=11$, more than double as fast for $3\leq M\leq 58$, and a break-even point at about $M=124$ columns.
 
 %\newpage
-\subsection{Generalitzations}
+\subsection{Vector-valued lookups}
 \label{s:pa:Generalizations}
 
-Protocol \ref{prot:lookup} is easily generalized to functions with multilinear values, 
+As Plookup, Protocol \ref{prot:lookup} is easily generalized to functions with multilinear values, 
 \begin{align*}
 t(\vec x) &= \sum_{(j_1,\ldots, j_k)\in\{0,1\}^k} t_{j_1,\ldots, j_k}(\vec x)\cdot Y_1^{i_1}\cdots Y_k^{j_k},
 \\
@@ -1160,10 +1065,10 @@ f_i(\vec x) &= \sum_{(j_1,\ldots, j_k)\in\{0,1\}^k} f_{i, j_1,\ldots, j_k}(\vec 
 \end{align*}
 $i=1,\ldots, M$, without changing the soundness error bound from Theorem \ref{thm:lookup:soundness}.
 As $F[X, Y_1,\ldots, Y_k]$ is a unique factorization domain, and polynomials of the form $X -  \sum_{(i_1,\ldots, i_k)\in\{0,1\}^k} c_{i_1,\ldots, i_k}\cdot Y_1^{i_1}\cdots Y_k^{i_k}$ are irreducible, we may apply Lemma \ref{lem:batchsetmembership} to see that $\bigcup_{i=1}^M \{f_i(\vec x)\}_{\vec x\in H}\subseteq \{t(\vec x)\}_{\vec x\in H}$ as sets in the rational function field $F(X, Y_1,\ldots, Y_k)$, if and only if there exists a function $m: H\rightarrow F$ such that
-\begin{equation}
-\label{e:lookup:fractional:identity:general}
+\begin{equation*}
+%\label{e:lookup:fractional:identity:general}
 \sum_{\vec x\in H} \sum_{i=1}^M \frac{1}{X + f_i(\vec x)(\vec Y)} = \sum_{\vec x\in H} \frac{m(\vec x)}{X + t(\vec x)(\vec Y)}.
-\end{equation}
+\end{equation*}
 The only change to Protocol \ref{prot:lookup} is that the verifier now samples $x$ from $F$ and $\vec y = (y_1,\ldots, y_k)$ from $F^k$, and continues with $x - f_i(\vec x)$ and $x - t(\vec x)$ replaced by $x - f_i(\vec x)(\vec y)$ and $x - t(\vec x)(\vec y)$.
 %As the individual degrees with respect to $Y_1$, \ldots, $Y_k$ are again bounded by $|H|$, the soundness error does not change.
 %Alternatively, at the cost of a slight increase of the soundness error one can choose $f, g: H\longrightarrow F[X]$ with values being polynomials of degree at most $k-1$ . 
@@ -1171,232 +1076,286 @@ The only change to Protocol \ref{prot:lookup} is that the verifier now samples $
 
 
 \newpage
-\section{Lookups based on the Hyperplonk shift}
+\section{Multivariate Plookup}
 \label{s:hyperplonk}
 
-In this section we sketch batch-column lookups based on the Plookup strategy and the time shift from Hyperplonk+ \cite{Hyperplonk}. 
-We  give detailed operation counts and compare with the lookup argument from Section \ref{s:lookups}.
-
-On of the main contributions of \cite{Hyperplonk} is the introduction of an (almost) transitive time shift $T: H\rightarrow H$ which translates to multilinear extensions in a tame manner.  
-The shift is derived from the multiplication by a primitive root in $GF(2^n)$, 
+In this section we sketch batch-column lookups using the Plookup strategy and the multivariate time shift introduced by Hyperplonk \cite{Hyperplonk}. 
+%We  give detailed operation counts and compare with the lookup argument from Section \ref{s:lookups}.
+The time shift $T: H \rightarrow H$ on the boolean hypercube $H = \{\pm 1\}^n$ is derived from the multiplication by a primitive root in $GF(2^n)$, 
 \[
 T(x_1, \ldots, x_n) = \frac{1 + x_n}{2} \cdot (1, x_1,\ldots, x_{n-1}) + \frac{1 - x_n }{2} \cdot (- 1,(-1)^{1 - c_1}\cdot x_1,\ldots, (-1)^{1 - c_{n - 1}}\cdot x_{n-1}),
 \]  
 where the $c_i\in\{0,1\}$ are the coefficients of a primitive polynomial $1 + \sum_{i=1}^{n-1} c_i\cdot X^i + X^n$ over $GF(2)$.
-The time shift acts transitively on the punctuated hypercube $H' = H\setminus\{\vec 1\}$ (as a group automorphism it has $\vec 1$ as a fixed point), and more importantly, evaluations of a shifted function $f(T(\vec x))$ can be simulated from two evaluations of $f$ by
-\begin{equation}
-\label{e:hyperplonk:shifted:function}
-f(T(x_1, \ldots, x_n)) =  \frac{1 + x_n}{2} \cdot f(1, x_1,\ldots, x_{n-1}) + \frac{1 - x_n }{2} \cdot f(- 1,(-1)^{1 - c_1}\cdot x_1,\ldots, (-1)^{1 - c_{n - 1}}\cdot x_{n-1}).
-\end{equation}
-
-%Although the Hyperplonk lookup uses the , 
-Using the time shift $T$ allows for the same strategy for the univariate Plookup argument. 
-The argument is based on the fact that, given two sequences of field elements $(a_i)_{i=0}^{N-1}$ and $(t_i)_{i=0}^{N-1}$, then $\{a_i : j= 0,\ldots, N-1\}\subseteq \{t_i : i = 0, \ldots, N-1\}$ as sets, if and only if there exists a sequence $(s_i)_{i=0}^{2N-1}$ of double the size, which satisfies the identity
-\begin{equation}
-\label{e:lookup:Gabizon}
-\prod_{i=0}^{N-1} (X + s_{i}+ s_{i+1\bmod N}\cdot Y)
-= \prod_{i=0}^{N-1}  (X + a_i + a_i\cdot Y)\cdot (X + t_i + t_{i+1\bmod N}\cdot Y).
-\end{equation}
-(The sequence $(s_i)_{i=0}^{2N-1}$ is  the concatenation of the $(a_i)$ and $(t_i)$, ordered by value in the same way as in $t$.)
-We again discuss two approaches\footnotemark for dealing with the grand product obtained from \eqref{e:lookup:Gabizon}.%, when sampling random $(\alpha, \beta)\sample F^2$ for $(X,Y)$.
+The time shift acts transitively\footnotemark on the punctuated hypercube 
 \footnotetext{%
-We point out that the presented strategies slightly differ from the one in \cite{Hyperplonk}, which uses the more expensive grand product argument from \cite{Quarks}.
-}
-The main protocol, see Section \ref{s:hyperplonk:small}, applies a batched grand product argument over $H$, independent of $M$ the number of columns, leading to a $\bigO{M^2}$ prover for similar reasons as Protocol \ref{prot:lookup} does.
-The second one proves the grand product argument over an extended hypercube $\bar H$ of size $M\cdot |H|$, which leads to $\bigO{M}$ oracle costs, but has bounded algebraic degree.
-We use this protocol as a reference to determine the optimal batch size.
+As a group automorphism it has $\vec 1=(1,1,\ldots, 1)$ as a fixed point.
+}%
+\[
+H' = H\setminus\{\vec 1\},
+\] 
+and more importantly, evaluations of a shifted function $f(T(\vec x))$ can be simulated from two evaluations of $f$ by
+\begin{equation*}
+f(T(x_1, \ldots, x_n)) =  \frac{1 + x_n}{2} \cdot f(1, x_1,\ldots, x_{n-1}) + \frac{1 - x_n }{2} \cdot f(- 1,(-1)^{1 - c_1}\cdot x_1,\ldots, (-1)^{1 - c_{n - 1}}\cdot x_{n-1}).
+\end{equation*}
+
+%Using the time shift $T$ allows for the same strategy for the univariate Plookup argument. 
+%The argument is based on the fact that, given two sequences of field elements $(a_i)_{i=0}^{N-1}$ and $(t_i)_{i=0}^{N-1}$, then $\{a_i : j= 0,\ldots, N-1\}\subseteq \{t_i : i = 0, \ldots, N-1\}$ as sets, if and only if there exists a sequence $(s_i)_{i=0}^{2N-1}$ of double the size, which satisfies the identity
+%\begin{equation}
+%\label{e:lookup:Gabizon}
+%\prod_{i=0}^{N-1} (X + s_{i}+ s_{i+1\bmod N}\cdot Y)
+%= \prod_{i=0}^{N-1}  (X + a_i + a_i\cdot Y)\cdot (X + t_i + t_{i+1\bmod N}\cdot Y).
+%\end{equation}
+%(The sequence $(s_i)_{i=0}^{2N-1}$ is  the concatenation of the $(a_i)$ and $(t_i)$, ordered by value in the same way as in $t$.)
+%We again discuss two approaches\footnotemark for dealing with the grand product obtained from \eqref{e:lookup:Gabizon}.%, when sampling random $(\alpha, \beta)\sample F^2$ for $(X,Y)$.
+%\footnotetext{%
+%We point out that the presented strategies slightly differ from the one in \cite{Hyperplonk}, which uses the more expensive grand product argument from \cite{Quarks}.
+%}
+%The main protocol, see Section \ref{s:hyperplonk:small}, applies a batched grand product argument over $H$, independent of $M$ the number of columns, leading to a $\bigO{M^2}$ prover for similar reasons as Protocol \ref{prot:lookup} does.
+%The second one proves the grand product argument over an extended hypercube $\bar H$ of size $M\cdot |H|$, which leads to $\bigO{M}$ oracle costs, but has bounded algebraic degree.
+%We use this protocol as a reference to determine the optimal batch size.
 
  
 %In terms of performance both are equivalent.)
 
-\subsection{Multivariate Plookup}
+\subsection{Batch-column Plookup}
 \label{s:hyperplonk:small}
 
 Let $t: H'\rightarrow F$ be the lookup table, and $f_i:  H'\rightarrow F$, $i=1,\ldots,M$, the functions subject to the lookup.
 Although the functions are defined over the punctuated hypercube $H'$, we assume arbitrary values at $\vec 1$.
 (These will be ignored by the lookup argument.)
-The prover provides the ordered merge of the $f_i$  together with $t$ via additional functions $s_i: H'\rightarrow F$, $i=1,\ldots, M+1$, subject to the  lookup identity
+The prover provides the ordered union of the $f_i$  together with $t$ in a piecewise manner, via the additional functions $s_i: H'\rightarrow F$, $i=1,\ldots, M+1$. 
+The \textit{Plookup identity} (in the \cite{LookupsBlog} style) is then
 \begin{multline*}
 \prod_{\vec x\in H'} \prod_{i=1}^{M} (X + s_{i}(\vec x) + s_{i+1}(\vec x)\cdot Y)\cdot (X + s_{M+1}(\vec x) + s_1(T(\vec x))\cdot Y)
 \\
 = \prod_{\vec x\in H'} \prod_{i=1}^{M} (X + f_i(\vec x) + f_i(\vec x)\cdot Y)\cdot (X + t(\vec x) + t(T(\vec x))\cdot Y).
 \end{multline*}
 The identity is reduced to a grand product over $H'$ by random samples $\alpha, \beta\sample F$ for $X$ and $Y$, yielding 
-\[
+\begin{equation}
+\label{e:plookup:grandproduct}
 \prod_{\vec x\in H'} h(\vec x) = 1,
-\]
+\end{equation}
 where 
-\[
+\begin{equation}
+\label{e:plookup:product}
 h(\vec x) = \frac{\alpha + s_{M+1}(\vec x) + s_1(T(\vec x))\cdot \beta}{\alpha + t(\vec x) + t(T(\vec x))\cdot \beta}\cdot 
 \prod_{i=1}^M \frac{(\alpha + s_i(\vec x) + s_{i+1}(\vec x)\cdot \beta)}{
 (\alpha + f_i(\vec x) + f_i(\vec x)\cdot \beta)}.
-\]
-%\[
-%\prod_{\vec x\in H'}\frac{\alpha + s_{M+1}(\vec x) + s_1(T(\vec x))\cdot \beta}{\alpha + t(\vec x) + t(T(\vec x))\cdot \beta}\cdot 
-%\prod_{i=1}^M \frac{(\alpha + s_i(\vec x) + s_{i+1}(\vec x)\cdot \beta)}{
-%(\alpha + f_i(\vec x) + f_i(\vec x)\cdot \beta)} = 1.
-%\]
-The prover computes the cumulative products of the values $h(\vec x)$ along the orbit of the time shift $T$ on $H'$, starting with $\phi(-\vec 1) = 1$, and setting
-\[
-\phi\big(T^{k}(-\vec 1)\big) = \phi\big(T^{k-1}(-\vec 1)\big) \cdot h\big(T^{k-1}(-\vec 1)\big),
-\]
-for $k=1, \ldots, |H|-1$.
-At the remaining point $\vec x = \vec 1$ outside $H'$, the prover sets $\phi(\vec x)$ to zero.
-Correctness of the grand product is proven by the constraint on its initial value $\phi(-\vec 1) = 1$, and the domain identity
-\begin{equation}
-\phi(T( \vec x)) \cdot  \tau(\vec x)\cdot \prod_{i=1}^M  \varphi_{i}(\vec x) 
-- \phi(\vec x)\cdot \sigma_{M+1}(\vec x)\cdot \prod_{i=1}^M \sigma_{i}(\vec x)
-= 0, 
 \end{equation}
-for all $\vec x \in H$, where $\tau(\vec x) = \alpha + t(\vec x) + \beta\cdot t(T( \vec x))$ and
+As in Protocol \ref{prot:lookup}, we control the algebraic degree of the resulting identity for \eqref{e:plookup:grandproduct} by splitting the product \eqref{e:plookup:product} into $K= \ceil{\frac{M+1}{\ell}}$  partial products of size $\ell$, where $1\leq \ell\leq M + 1$. 
+For this we use the notation
+\begin{align*}
+\varphi_0(\vec x) &= \alpha + t(\vec x) + \beta\cdot t(T( \vec x)),
+\\
+\sigma_0(\vec x) &= \alpha + s_{M+1}(\vec x) + \beta\cdot s_1(T( \vec x)),
+\end{align*}
+and for $i=1,\ldots, M$,
 \begin{align*}
 \varphi_{i} (\vec x) &=\alpha +  (1+\beta)\cdot f_i(\vec x),
 \\
-\sigma_{i}(\vec x) &= \alpha + s_i(\vec x) + \beta\cdot s_{i+1}(\vec x), 
+\sigma_{i}(\vec x) &= \alpha + s_i(\vec x) + \beta\cdot s_{i+1}(\vec x). 
 \end{align*}
- for $i=1,\ldots, M$, except $\sigma_{M+1}(\vec x) =  \alpha + s_{M+1}(\vec x) + \beta\cdot s_1(T( \vec x))$.
-As in Protocol \ref{prot:lookup}, both constraints on $\phi$, the initial value condition and the domain identity, are reduced to sumchecks over $H$ by help of the Lagrange polynomials $L_H(\:.\:, -\vec 1)$ and $L_H(\:.\:, \vec y)$, where $\vec y\sample F^n$, and then combined into a single one by a batching randomness $\lambda\sample F$.
-The resulting overall sumcheck is
+Then 
 \[
-\sum_{\vec x\in H} Q(L_H(\vec x, \vec y), L_H(\vec x, -\vec 1),  \tau(\vec x), \varphi_{1}(\vec x),\ldots, \varphi_{M}(\vec x), \sigma_{1}(\vec x),\ldots, \sigma_{M+1}(\vec x),  \phi(\vec x), \phi(T(\vec x))) = 0,
+h(\vec x) %= \prod_{i=0}^M \frac{\sigma_i(\vec x)}{\varphi_i(\vec x)} 
+= \prod_{k=1}^K h_k(\vec x),
 \]
+with
+\[
+h_k(\vec x) = \prod_{i\in I_k}  \frac{\sigma_i(\vec x)}{\varphi_i(\vec x)}, 
+\]
+where $I_k = [(k-1)\cdot \ell, k\cdot\ell) \cap [0, M]$.
+For each $k=1, \ldots, K$, the prover computes the cumulative products of the values $h_k(\vec x)$ along the orbit of the time shift $T$ on $H'$, starting with $\phi_k(-\vec 1) = 1$, and setting
+\[
+\phi_k\big(T^{j}(-\vec 1)\big) = \phi_k\big(T^{j-1}(-\vec 1)\big) \cdot h\big(T^{j-1}(-\vec 1)\big),
+\]
+for $j= 1, \ldots, |H'|-1$.
+At the remaining point $\vec x = \vec 1$ outside $H'$, the prover sets $\phi_k$ to zero.
+Correctness of the grand product \eqref{e:plookup:grandproduct} is proven by the domain identities
+\begin{align*}
+\phi_k(T(\vec x))\cdot \prod_{i\in I_k} \varphi_i(\vec x) - \phi_k(\vec x)\cdot \prod_{i\in I_k}  \sigma_i(\vec x) &= 0,
+\end{align*}
+and the point identities
+\begin{align*}
+\phi_{1}(-1) &= 1,
+\\
+\phi_k(T^{-1}(-\vec 1)) &=  \phi_{(k\bmod K)+1}(-\vec 1), 
+\end{align*}
+where $k= 1, \ldots, K$.
+%which are again turned into sumchecks by using the Lagrangians $L_H(\:.\:,-\vec 1)$ and $L_H(\:.\:, T^{-1}(-\vec 1))$.
+These identities are reduced to sumchecks over $H$ by help of the Lagrange polynomials $L_H(\:.\:, -\vec 1)$ and $L_H(\:.\:, \vec y)$, where $\vec y\sample F^n$, and then combined into a single one by random batching scalars $\lambda_1, \ldots, \lambda_K\sample F$.
+The resulting overall sumcheck is
+\begin{multline*}
+\hspace*{-0.5cm}
+\sum_{\vec x\in H} Q(L_H(\vec x, \vec y), L_H(\vec x, -\vec 1),  \varphi_{0}(\vec x),\ldots, \varphi_{M}(\vec x), \sigma_{0}(\vec x),\ldots, \sigma_{M}(\vec x),  \phi_1(\vec x),\ldots, \phi_{K}(\vec x), \phi_1(T(\vec x)), \ldots \phi_K(T(\vec x))) 
+\\
+= 0,
+\end{multline*}
 where
 \begin{equation}
 \label{e:lookup:hyperplonk:Q}
-Q(L_H, L,   \tau, \varphi_1,\ldots, \varphi_M, \sigma_1,\ldots, \sigma_{M+1}, \phi, \phi_T) 
-= L_H \cdot \Big(\phi_T \cdot \tau \cdot\prod_{i=1}^M \varphi_i
-- \phi \cdot \prod_{i=1}^{M+1} \sigma_i \Big)
-+ \lambda\cdot L \cdot (\phi - 1). 
+\begin{aligned}
+Q(L_H, &L, L_T, \varphi_0,\ldots, \varphi_M, \sigma_0,\ldots, \sigma_{M}, \phi_1, \ldots, \phi_K, \phi_{1,T}, \ldots, \phi_{K,T}) 
+= 
+\\&
+L \cdot (\phi - 1) + \sum_{k=1}^K \lambda_k\cdot  L_H \cdot \Big(\phi_{k,T} \cdot \prod_{i\in I_k} \varphi_i
+- \phi_k\cdot \prod_{i\in I_k} \sigma_i \Big)+ \mu_k \cdot \left( L_T\cdot \phi_k - L\cdot \phi_{(k \bmod K) + 1}\right). 
+\end{aligned} 
 \end{equation}
-Note that $Q$ has  absolute degree $d = M+3$, which is the same as in Protocol \ref{prot:lookup}, but  about the double of variables, $\nu= 2\cdot M+ 6$.
-Its arithmetic complexities are $|Q_\mathsf M|= 2\cdot(M+1) + 3$, $|Q_\mathsf S|= 2$, $|Q_\mathsf A|= 1$. 
+The sumcheck polynomial $Q$ has  absolute degree $d = \ell + 2$, which is the same as in Protocol \ref{prot:lookup}, but  about the double of variables, $\nu = 2\cdot (M+1 + K) + 3$.
+Its arithmetic complexities are $|Q_\mathsf M|= K\cdot (2\cdot \ell + 3) + 2$, $|Q_\mathsf A|= 4\cdot K - 1$. 
 
+\subsection{Computational cost and optimal product size}
 
-\subsection{A reference variant for Section \ref{s:hyperplonk:small}}
-\label{s:hyperplonk:large}
+The prover cost for the Plookup strategy is as follows.
+Computing the values for all $\varphi_i,  \sigma_i$ over $H$ consumes overall
+\[
+|H|\cdot (2\cdot(M+1)\cdot \mathsf M + (3\cdot M+ 4)\cdot \mathsf A),
+\]
+the quotients $h_k(\vec x)$ are obtained within $|H|\cdot K\cdot (2\cdot(\ell-1) + 4)\cdot \mathsf M$, using batch inversion.
+From these values of the $\phi_k(x)$ over $H$ are derived by another  $K\cdot |H|\cdot \mathsf M$.
+The domain evaluation for $L_H(\vec X, \vec y)$ is obtained within $|H|\cdot (\mathsf M + \mathsf A)$ operations,
+ resulting in the overall preparation cost
+\begin{equation}
+\label{e:plookup:prep:cost}
+|H|\cdot ( (2\cdot(M+1)  + K\cdot  (2\cdot \ell + 3)+1)\cdot \mathsf M + (3 \cdot M+ 5)\cdot \mathsf A).
+\end{equation}
+According to \eqref{e:sumcheck:cost} the sumcheck costs
+\begin{equation}
+\label{e:plookup:sumcheck:cost}
+|H| \cdot  (\ell + 3)\cdot \big((2\cdot M + 7 + (2\cdot\ell +5)\cdot K)\cdot \mathsf M +  (2\cdot\ell + 6)\cdot (M + 2 + 3\cdot K) \cdot \textsf A\big).
+\end{equation}
+The total costs of the oracle prover are 
+\begin{itemize}
+\item
+arithmetic costs of
+\begin{equation}
+\label{e:lookup:cost}
+|H| \cdot \left( \left(2\cdot \ell ^2+13\cdot \ell+18\right) \ceil{\frac{M+1}{\ell}} +\ell\cdot (2\cdot M+7)+8\cdot (M+3) \right) \cdot \mathsf M,
+\end{equation}
+neglecting field additions and substractions, and
+\item 
+oracle costs of 
+\begin{equation}
+M + K+1 =  M + \ceil{\frac{M+1}{\ell}} + 1
+\end{equation} 
+functions of size $|H|$.
+\end{itemize}
 
-Suppose that we have a table function $t:H'\rightarrow F$ defined over the punctuated hypercube $H' = H\setminus\{\vec 1\}$, and $M$ column functions $f_1,\ldots, f_M: H\rightarrow F$ defined on the \textit{entire} hypercube.
-%Again, $t$ takes an arbitrary value at $\vec 1$, which is ignored by the lookup 
-We assume that  $M + 1=2^m $ for an integer $m\geq 1$, so that we can index the column functions as $f_{\vec z}$, with $\vec z$ from $\{\pm 1\}^m \setminus \{\vec 1\}$.
-The ordered concatenation of the column functions and the table function has now $2^m \cdot |H| - 1$ entries, which we arrange in a single function $s$ over $\bar H\setminus \{\vec 1\}$ along the orbit of the time shift $T_{\bar H}$ on $\bar H$, where  $\bar H = \{\pm 1\}^m\times H$.
-The value of $s$ at $\vec 1$ can be set arbitrary (it will be ignored by the lookup argument).
-Using the patched  function
-\[
-f(\vec y, \vec x) = \sum_{\vec z \in \{\pm 1\}^m\setminus\{\vec 1\}} L_m(\vec y, \vec z)\cdot f_{\vec z}(\vec x),
-\]
-over $\bar H$, where $L_m$ is the Lagrange kernel for $\{\pm 1\}^m$, the lookup identity at random $(\alpha,\beta)\sample F^2$ reads now as
-\[
-\prod_{(\vec y, \vec x)\in \bar H'}  (\alpha + s(\vec y, \vec x) + \beta\cdot s(T_{\bar H} (\vec y, \vec x))) = \prod_{(\vec y, \vec x)\in \bar H'}  (\alpha + (1 + \beta)\cdot f(\vec y, \vec x) + L_{m}(\vec y, \vec 1)\cdot (t(\vec x) + \beta \cdot t(T_H(\vec x))),
-\]
-where $\bar H' = \bar H\setminus\{\vec 1\}$.
-(Notice that the $\alpha$-term for $t$ on the right hand side is combined with the $\alpha$-term for $f$.)
-In other words the prover needs to show that
-\[
-\prod_{(\vec y, \vec x)\in \bar H'}\frac{\varphi(\vec y, \vec x)}{\sigma(\vec y,\vec x)} = 1,
-\]
-where 
-\begin{align*}
-\varphi(\vec y, \vec x) &= \alpha + (1+\beta)\cdot f(\vec y, \vec x) + L_m(\vec y, \vec 1)\cdot (t(\vec x) + \beta \cdot t(T_H(\vec x))), 
+\subsubsection{The optimal choice of $\ell$}
+
+As for Protocol \ref{prot:lookup}, the partial product size $\ell$ determines the trade-off between algebraic degree and the number of commitments.
+Based on the multi-scalar multiplication benchmarks from Table \ref{tab:pippenger}, and the operation counts \eqref{e:plookup:prep:cost} and \eqref{e:plookup:sumcheck:cost} we obtain the following estimates for the optimal choice of $\ell$, see Table \ref{tab:plookup:optimal}.
+
+\begin{table}[h!]
+\caption{%
+An estimate of the partial sum size $\ell$ which minimizes the prover cost. 
+The numbers are based on the operation counts \eqref{e:plookup:prep:cost} and \eqref{e:plookup:sumcheck:cost} for the oracle prover and the benchmarks for a multi-scalar multiplication in the Pallas curve, Table \ref{tab:pippenger}.
+}
+\label{tab:plookup:optimal}
+\vspace*{0.5cm}
+\centering
+\begin{tabular} {|c|c|c|c|c|c|c|c|c|}
+\hline
+\multirow{2}{*}{$\log N$} & \multicolumn{4}{c|}{$\ell$} & \multicolumn{4}{c|}{field mult. per col.} 
+\\\cline{2-9}
+& $M=10$ & $M=20$ & $M=70$ & $M=\infty$ & $M=10$ &$M=20$ & $M=70$ & $M=\infty$
+\\\hline
+12 & 11 & 11 & 12 & 12 & $N\cdot 750$ & $N\cdot 717$ &  $N\cdot 687$ &  $N\cdot 675$
 \\
-\sigma(\vec y, \vec x) &= \alpha + s(\vec y, \vec x) + \beta\cdot s(T_{\bar H} (\vec y, \vec x)).
-\end{align*} 
+14 & 11 & 11 & 12 & 11 & $N\cdot 637$ & $N\cdot 609$ &  $N\cdot 584$ &  $N\cdot 572$
+\\
+16 & 11 &11 & 9 & 10 & $N\cdot 553$ & $N\cdot 528$ &  $N\cdot 506$&  $N\cdot 496$
+\\
+18 & 11 & 11 & 9 &  10 & $N\cdot 503$ & $N\cdot 479$  &  $N\cdot 458$ &  $N\cdot 450$
+\\\hline
+\end{tabular}
+\end{table}
 
-As before, the prover provides a function $\phi$ over $\bar H'$ for the cumulative products of the values of $h(\vec x) = \frac{\varphi(\vec y, \vec x)}{\sigma(\vec y,\vec x)}$ along the orbit of $T_{\bar H}$, starting with $\phi(-\vec 1)= 1$, and setting
+%\newpage
+\subsection{Bounded multiplicity encoding}
+\label{s:bounded:plookup}
+
+The Polygon MidenVM \cite{Miden} uses an improvement of Plookup,  which reduces the number of commitments for the sorted  union of $f_1,\ldots, f_M$ and $t$ by arranging it as runs of at most $B=2^b$ occurences, where $b\geq 1$.
+The length $m$ of each run (reduced by one, as explained below) is then given bitwise,
 \[
-\phi(T_{\bar H}^k (-\vec 1)) = \phi(T_{\bar H}^{k-1} (-\vec 1)) \cdot h(T_{\bar H}^{k-1} (-\vec 1)), 
-\] 
-for $k=1, \ldots, |\bar H| - 2$. 
-At the remaining point $\vec 1$ we set $\phi(\vec 1) = 0$. %, so that the above recursive conditions holds even over the orbit of $\vec 1$, regardless of the values  $t(\vec 1)$ and $s(\vec 1, \vec 1)$.
-Correctness of $\phi$ is ensured by $\phi(-\vec 1) = 1$, and the domain identity
-\begin{equation*}
-\phi(T_{\bar H}(\vec y, \vec x)) \cdot \varphi(\vec y, \vec x)
-- \phi(\vec y, \vec x) \cdot \sigma(\vec y, \vec x) = 0
-\end{equation*}
-over $\bar H$.
-Applying the Lagrange polynomials $L_{\bar H}(\:.\:, \vec z)$, $\vec z \sample F^{m+n}$, and $L_{\bar H}(\:.\:, -\vec 1)$, the constraints on $\phi$ are reduced to sumchecks over $\bar H$, which are then combined into a single one using a random $\lambda\sample F$.
-The overall sumcheck is
-\[
-\sum_{(\vec y, \vec x)\in \bar H} Q(L_{\bar H}((\vec y, \vec x) , \vec z), L_{\bar H}((\vec y, \vec x), -\vec 1), \varphi(\vec y, \vec x), \sigma(\vec y, \vec x), \phi(\vec y, \vec x),  \phi(T_{\bar H}(\vec y, \vec x))) = 0,
+m - 1 = m_{0} + m_{1}\cdot 2 + \ldots + m_{b-1}\cdot 2^{b-1},
 \]
-where 
+and the power of the corresponding term $Z$ in the lookup product is selected by  the expression
 \begin{equation}
-Q(L_H, L, \varphi, \sigma,\phi, \phi_T) = 
-L_H\cdot (\phi_T\cdot \varphi - \phi\cdot \sigma) + \lambda\cdot L\cdot (\phi - 1).
+\label{e:bplookup:V}
+V(Z, m_0, \ldots, m_{b-1}) = \prod_{j=0}^{b-1} (m_{j}\cdot  Z^{2^j} + (1- m_{j})\cdot 1) = Z^{m_0 + m_1\cdot 2 + \ldots + m_{b-1}\cdot 2^{b-1}}.
 \end{equation}
-The polynomial $Q$ has $\nu=6$ variables, absolute degree $d=3$, and its arithmetic complexities are $|Q_\mathsf M|= 5$, $|Q_\mathsf S| = 2$, $|Q_\mathsf A|= 1$.
+From this point of view it can be seen as an application of the Arya \cite{Arya} multiplicity technique to Plookup.
+Although \cite{Miden} restricts to range proofs (optimized for the cases of small ranges, the size of which is a fraction of the domain), we quickly outline its generalization to lookups of domain-sized tables.
 
-\subsection{Computational cost}
-
-The prover cost for the Protocol from Section \ref{s:hyperplonk:small} is as follows.
-Computing the values for $\tau$ and all $\varphi_i,  \sigma_i$ over $H$ consumes overall
+Let $N$ be the size of the punctuated hypercube $H'$. 
+Instead of committing to the full-length  union $(s_i)_{i=1}^{(M+1)\cdot N}$, the prover provides the compressed sequence
 \[
-|H|\cdot (2\cdot(M+1)\cdot \mathsf M + (3 M+ 4)\cdot \mathsf A),
+(r_j, ( m_{j,0}, \ldots,  m_{j,b-1}))_{j=1}^n
 \]
-the quotient $h(\vec x)$ is obtained within $|H|\cdot (2\cdot M + 4)\cdot\mathsf M$, using batch inversion.
-From these values $\phi(x)$ over $H$ is derived by another  $|H|\cdot \mathsf M$.
-The domain evaluation for $L_H(\vec X, \vec y)$ is obtained within $|H|\cdot (\mathsf M + \mathsf A)$ operations, and the sumcheck costs
-\begin{equation*}
-|H| \cdot \left(1-\frac{1}{|H|}\right)\cdot \big((4\cdot M^2 + 25\cdot M + 38)\cdot \mathsf M +  (6\cdot M + 20)\cdot\textsf S + (2\cdot M^2 + 14\cdot M + 26) \cdot \textsf A\big).
-\end{equation*}
-Neglecting the $\nicefrac{1}{|H|}$-term, the overall cost of the prover is 
-\begin{equation}
-\label{e:hyperplonk:cost}
-|H| \cdot  \big((4\cdot M^2 + 29\cdot M + 46)\cdot \mathsf M +  (6\cdot M + 20)\cdot\textsf S + (2\cdot M^2 + 17\cdot M + 31) \cdot \textsf A\big).
-\end{equation}
-This is comparable with \eqref{e:lookup:cost}, but does not take into account that the prover needs to supply a total of $M+2$ functions over $H$ instead of two. 
-
-
-The cost of our reference protocol from Section \ref{s:hyperplonk:large} is as follows.
-Computing the values of the patched function $\varphi$  over $\bar H$ takes $|\bar H |\cdot (1\cdot \mathsf M + 2\cdot \mathsf A)$,
-and the same number of operations are needed for $\sigma$.
-The quotient $h$ over $\bar H$ is obtained by batch inversion, consuming
+of values $r_j$ and their $B$-bounded run lengths $m_j$ (minus one), represented bitwise by $ m_{j,0},\ldots,  m_{j,b-1} \in\{0,1\}$.  
+Depending on the distribution of the values, the size $n$ of the compressed sequence is bounded by 
 \[
-|\bar H|\cdot (3 + 1) \cdot \mathsf M,
+\frac{M + 1}{B}\cdot N \leq n \leq \left(\frac{M}{B} + 1\right)\cdot N.
 \]
-and the values of $\phi$ are computed within another $|\bar H|$ multiplications.
-Last but not least, computing $L_{\bar H}(\:.\:, \vec z)$ over $\bar H$ costs $|\bar H|\cdot (\mathsf M + \mathsf A)$, and the sumcheck 
-\[
-|\bar H| \cdot \left(1 + \frac{1}{|\bar H|}\right) \cdot (38 \cdot \mathsf M + 20 \cdot \mathsf S + 26\cdot\mathsf A).
-\] 
-Neglecting the $\frac{1}{|\bar H|}$-term, the overall cost of the prover is
-\begin{equation}
-\label{e:hyperplonk:large:cost}
-(M+1)\cdot |H| \cdot (45 \cdot \mathsf M + 20 \cdot \mathsf S + 30\cdot\mathsf A),
-\end{equation}
-whereas it needs to provide the functions $s$ and $\phi$ over $\bar H$, which amounts the equivalent of $2\cdot (M+1)$ functions over $|H|$.
-
-
-Based on our benchmark-backed equivalent number of field operations for a multi-scalar multiplications, Table \ref{tab:pippenger}, we obtain the optimal cost ratio
-\[
-r = \frac{\mathsf M(\text{Section \ref{s:hyperplonk:small}})}{\mathsf M(\text{Section \ref{s:hyperplonk:large}})}\approx 1.7
-\]
-throughout at a two-adic batch size of $M=8$, considering domain sizes $|H|$ between $\log|H|=12$ and $\log|H|=18$.
-%
-%\begin{table}[h!]
-%\caption{%
-%The estimated number of columns $M$ where the advantage of the protocol from Section \ref{s:hyperplonk:small} over the  $\bigO{M}$ strategy from Section \ref{s:hyperplonk:large} is maximal.
-%The numbers are based on the operation counts \eqref{e:hyperplonk:cost} and \eqref{e:hyperplonk:large:cost} for the oracle prover, and the benchmarks for a multi-scalar multiplication over the Pallas curve from Table \ref{tab:pippenger}.
-%}
-%\vspace*{0.5cm}
-%\centering
-%\begin{tabular} {|c|c|c|c|c|}
-%\hline
-%$\log|H|$ & 12 & 14 & 16 & 18
-%\\\hline
-%$M$ & $8$ & $8$ & $8$ & $8$
+(The left bound corrsponds to uniform distribution, and the right bound to the singleton case.)
+The lookup product over $s$, written in terms of the compressed sequence is then
+\begin{multline*}
+\prod_{i=1}^{(M+1)\cdot N} (X + s_i+ s_{(i \bmod N) +1}\cdot Y)  
+%= \prod_{j=1}^{n} (X +   (1 + Y)\cdot  s_j)^{ m_j - 1} \cdot (X +   s_j +  Y\cdot  s_{(j \bmod n) +1})
 %\\
-%$r$ & $1.7$ & $1.7$ & $1.7$ & $1.7$
-%\\\hline
-%\end{tabular}
-%\end{table}
+= \prod_{j=1}^{n} V(X + (1+Y)\cdot r_j, \underbrace{ m_0, \ldots,  m_{b-1}}_{\text{encoding }  m_j - 1}) \cdot (X +   r_j +  Y\cdot  r_{(j \bmod n) +1}).
+\end{multline*}
 
-\subsection{Comparison with logarithmic derivative lookups}
+As before, the compressed sequence is provided piecewise, splitted into functions over $H'$. 
+This results in
+\[
+R = \ceil{\frac{M}{B}+ 1} 
+\]
+``blocks'' of functions, $r_k(\vec x)$ and $( m_{k,0}(\vec x),\ldots,  m_{k, b-1}(\vec x))$, $k=1,\ldots, R$, subject to 
+the lookup identity
+\begin{multline*}
+%\label{e:bPlookup:lookup:identity}
+%\begin{aligned}
+\prod_{\vec x\in H'} 
+V(X +  r_K(\vec x) \cdot (1 + Y), m_{R,0}(\vec x),\ldots, m_{R,b-1}(\vec x)) \cdot (X +  r_{R}(\vec x) +  r_{1}(T(\vec x))\cdot Y)
+\\
+\cdot 
+\prod_{k=1}^{R-1}
+V(X +  r_k(\vec x) \cdot (1 + Y), m_{k,0}(\vec x),\ldots, m_{k,b-1}(\vec x)) \cdot (X +  r_{k}(\vec x) +  r_{k+1}(\vec x)\cdot Y)
+\\
+= \prod_{\vec x\in H'} (X + t(\vec x) + t(T(\vec x))\cdot Y) \cdot \prod_{i=1}^M (X + f_i(\vec x)\cdot (1 + Y)),
+%\end{aligned}
+%\end{equation}
+\end{multline*}
+with $V$ as above, and the boolean domain identities $m_{k,i}(\vec x)\cdot (1 - m_{k,i}(\vec x))^2 = 0$,
+over $H$, for all $k, i$.
+Note that the commitment costs for $s$ are reduced by the factor 
+\[
+\frac{R\cdot (1 + \log_2 B)}{M+1} \approx \frac{1 + \log_2 B}{B},
+\]
+whereas the absolute degree of the lookup identity is almost invariant for large $B$, increasing only by the factor
+\[
+\frac{R}{M+1}\cdot (B + \log_2 B) \approx 1 + \frac{\log_2 B}{B}.
+\]
+As the protocol is along the lines of plookup, we omit further details.
 
-The significant advantage of the logarithmic derivative lookup over the one from the current section is the lower oracle costs.
-While the Plookup strategy demands $(M + 2)$ oracles, the logarithmic derivative only uses $2$, while having comparable arithmetic costs. 
-We compare the two strategies by their computational cost per column, when running them at optimal batch size $M$.
 
-\begin{table}
+
+
+
+
+
+%\newpage
+\section{Comparison}
+
+
+The significant advantage of the logarithmic derivative lookup over Plookup is the lower oracle costs.
+While the Plookup strategy demands $M + 1$ oracles for committing to the sorted union of the $M$ witness column and the table, the logarithmic derivative approach demands only a single oracle for the multiplicities.
+We compare the two strategies by their computational cost per column, when running them with optimal sum/product size $\ell$ as given in Table \ref{tab:lookup:optimal} and \ref{tab:plookup:optimal}.
+
+\begin{table}[h!]
 \caption{%
 The estimated performance advantage of logarithmic derivative lookups (Protocol \ref{prot:lookup}) over the multivariate Plookup strategy (Section \ref{s:hyperplonk:small}), as the ratio of their number of field multiplications per column. 
 The numbers are based on the equivalent number of field multiplications for a multi-scalar multiplication over the Pallas curve, given in Table \ref{tab:pippenger}.
@@ -1405,53 +1364,108 @@ The numbers are based on the equivalent number of field multiplications for a mu
 \label{tab:comparison}
 \vspace*{0.5cm}
 \centering
-\begin{tabular} {|c|c|c|c|}
+\begin{tabular} {|c|c|c|c|c|c|c|}
 \hline
-\multirow{2}*{$\log|H|$} & \multicolumn{2}{c|}{Number of field mult. per column} &  \multirow{2}*{ratio} 
+\multirow{2}*{$\log|H|$} & \multicolumn{6}{c|}{ratio Plookup / log. derivative} 
 \\
-\cline{2-3}
-& plookup strat. & log. derivative & 
+\cline{2-7}
+& $M=1$ & $M=5$ & $M=10$ & $M=20$ & $M=70$ & $M=\infty$ 
 \\\hline
-12 & $764$ ($M=8$) & $177$ ($M=13$) & $4.3$
+12 & $1.5$ & $3.1$ &  $4.0$ & $4.5$ & $5.2$ & $5.6$
 \\
-14 & $646$ ($M=8$) & $163$ ($M=12$) & $4.0$
+14 & $1.5$ & $3.0$ & $3.8$  &$4.2$ & $4.8$ & $5.1$
 \\
-16 & $559$ ($M=8$) & $153$ ($M=11$) & $3.7$
+16 & $1.5$ & $2.9$ &$3.6$ & $4.0$ & $4.5$  & $4.8$
 \\
-18 & $506$ ($M=8$) & $146$ ($M=10$) & $3.5$
+18 & $1.5$ & $2.9$ &$3.4$ & $3.9$  & $4.3$ & $4.5$
 \\\hline
 \end{tabular}
 \end{table}
+
+Let us give a rough comparison with the bounded multiplicity improvement of Plookup described in Section \ref{s:bounded:plookup}.
+For that  we simply count the number of oracles needed for obtaining a \textit{quadratic} overall domain identity (and hence a cubic sumcheck polynomial $Q$).
+Under this assumption,
+
+\begin{itemize}
+\item
+The logarithmic derivative approach needs overall $M + 1$ oracles: 
+one for the multiplicity function, and $M$ helper functions.
+
+\item
+Plookup demands overall $2\cdot (M+1)$ oracles: 
+$M+1$ for the sorted union of table and witnesses, and $M+1$ for the cumulative products.
+
+\item
+With multiplicity encoding using $b$ bits, Plookup is improved down to  
+\[
+M + 1 + \ceil{\frac{M} {2^b} + 1 }\cdot 3\cdot b
+\] 
+oracles:
+Each of the $\ceil{\frac{M} {2^b} + 1}$ blocks of the compressed representation consists of $b + 1$ domain-sized functions (the multiplicity bits and the value), and to linearize each factor in the power selection expression \eqref{e:bplookup:V}, one additionally needs $b-1$ functions for the two-adic powers, and another $b$ functions for the products with the bits.
+The grand product argument uses $M+1$ cumulative product functions.
+\end{itemize}
+%
+
+In its most extreme setting, $2^b = M$, and therefore only $R=2$ blocks, the number of oracles for the multiplicity improvement is 
+$M + 1 + 6 \cdot\log_2(M)$.
+We use this configuration in our comparison, Table \ref{tab:comparison:bPlookup}. 
+ 
+\begin{table}
+\caption{%
+A rough comparison of the three lookup protocols in their degree $d=2$ variant.
+The table presents the overall number of commitments for a batch of $M=2^b$ columns. 
+(bPlookup denotes Plookup using multiplicity encoding with $b$ bits.) 
+}
+\label{tab:comparison:bPlookup}
+\centering
+\vspace*{0.5cm}
+\begin{tabular}{|c|c|c|c|c|c|c|}
+\cline{2-7}
+\multicolumn{1}{c|}{} &$M = 4$ & $M=8$ & $M=16$ & $M=32$ & $M=64$ & $M=128$
+\\\hline
+log. derivative & 5 & 9 & 17 & 33 & 65 & 129
+\\
+Plookup & 10 & 18 & 34 & 66 & 130 & 258
+\\
+bPlookup ($b=\log_2(M)$) & 17 & 27 & 41 & 63 & 101 & 171
+\\\hline
+\end{tabular}
+\end{table}
+
+Multiplicity encoding seems to be beneficial only for quite large batches of columns. 
+Below $M = 32$ columns it is expected to perform even worse than Plookup. 
+However, for $M=64$ and $M=128$ that picture clearly changes.  
+For these batch sizes it consumes only $78\%$ and $66\%$ of Plookups' number of commitments, respectively, which is still about $55\%$ and  $30\%$ more than with the logarithmic derivative approach.
 
 %To give an estimate for these costs in the case of an elliptic curve based Lagrange commitment scheme (such as the IPA), we 
 %rely on a benchmark-backed equivalent of field multiplications for the multi-scalar multiplication in the Pallas curve.
 %These are found in Table \ref{tab:pippenger}.
 %With these equivalence measure and the operation counts from  \eqref{e:lookup:cost}, \eqref{e:lookup:large:cost} and \eqref{e:hyperplonk:cost}, \eqref{e:hyperplonk:large:cost}, we obtain the following ratios of field multiplications, see Table \ref{tab:comparison}.
 
-\begin{table}[h!]
-\caption{%
-The estimated performance advantage of logarithmic derivative lookups over the ones from this section, as the ratio of their number of field multiplications $r =\nicefrac{\mathsf M({Plookup})}{\mathsf M({logD})}$.
-The numbers are based on the equivalent number of field multiplications from Table \ref{tab:pippenger}.
-For hypercube sizes $|H|$ ranging from $2^{12}$--$2^{18}$ we describe the maximum ratio $r_{max}$ over the number of columns $M$, as well as the ranges for $M$ over which $r$ is larger than $2$ and $3$, respectively.
-The minimum ratio is throughout $r= 1.5$ and obtained in the single-column setting $M=1$. 
-}
-\label{tab:comparison}
-\vspace*{0.5cm}
-\centering
-\begin{tabular} {|c|c|c|c|c|}
-\hline
-$\log|H|$ & $r\geq 3$ & $r\geq 2$ & $r_{max}$ 
-\\\hline
-12 & $M\in [5, 41]$ & $M\in [3, 87]$ & $4.1$ (at $M =15$)
-\\
-14 & $M\in [6, 32]$ & $M\in [3, 71]$ & $3.8$ (at $M= 13$)
-\\
-16 & $M\in [6, 26]$  & $M\in [3, 59]$ & $3.5$ (at $M= 12$)
-\\
-18 & $M\in [6, 21]$  & $M\in [3, 52]$ & $3.2$ (at $M= 12$)
-\\\hline
-\end{tabular}
-\end{table}
+%\begin{table}[h!]
+%\caption{%
+%The estimated performance advantage of logarithmic derivative lookups over the ones from this section, as the ratio of their number of field multiplications $r =\nicefrac{\mathsf M({Plookup})}{\mathsf M({logD})}$.
+%The numbers are based on the equivalent number of field multiplications from Table \ref{tab:pippenger}.
+%For hypercube sizes $|H|$ ranging from $2^{12}$--$2^{18}$ we describe the maximum ratio $r_{max}$ over the number of columns $M$, as well as the ranges for $M$ over which $r$ is larger than $2$ and $3$, respectively.
+%The minimum ratio is throughout $r= 1.5$ and obtained in the single-column setting $M=1$. 
+%}
+%\label{tab:comparison}
+%\vspace*{0.5cm}
+%\centering
+%\begin{tabular} {|c|c|c|c|c|}
+%\hline
+%$\log|H|$ & $r\geq 3$ & $r\geq 2$ & $r_{max}$ 
+%\\\hline
+%12 & $M\in [5, 41]$ & $M\in [3, 87]$ & $4.1$ (at $M =15$)
+%\\
+%14 & $M\in [6, 32]$ & $M\in [3, 71]$ & $3.8$ (at $M= 13$)
+%\\
+%16 & $M\in [6, 26]$  & $M\in [3, 59]$ & $3.5$ (at $M= 12$)
+%\\
+%18 & $M\in [6, 21]$  & $M\in [3, 52]$ & $3.2$ (at $M= 12$)
+%\\\hline
+%\end{tabular}
+%\end{table}
 
 \section{Acknowledgements}
 
@@ -1465,312 +1479,15 @@ Furthermore, I would like to thank Ariel Gabizon for his feedback and useful dis
 \bibliographystyle{alpha}
 \bibliography{bibfileSNARKs}
 
+
+\newpage
 \appendix
-%\newpage
-\section{Appendix: the univariate case}
-\label{s:appendix}
-
-In this section we compare the univariate variant of Protocol \ref{prot:lookup} with the lookups from \cite{Plookup} and \cite{flookup}, generalized to batches of columns.
-As the ``large number of columns'' batching strategy from Section \ref{s:lookup:large}  again yields a break-even point beyond practical interest\footnotemark, we skip a separate analysis of it.
-\footnotetext{%
-For example, at $2^{12}$ constraints we obtain a break-even point at about $M=40$ columns.
-}%
-The protocols are formulate as Lagrange IOPs, even though the advantage over  polynomial oracles is modest:
-For most polynomials the prover needs to compute their coefficients anyway.
-%\footnotetext{%
-%However, we are aware that these protocols can be transformed into FFT-less ones by using the technique from \cite{UnivariateHypercubeSumcheck}, which translates the hypercube sumcheck to univariate domains.
-%}%
-
-We throughout assume that $F$ is an FFT-friendly finite field, having a multiplicative subgroup $H = \{x\in F: x^n = 1\}$ of order $n$, and denote by $g$ a generator of it.  
-The Lagrange kernel of $H$ is the symmetric bivariate polynomial
-\[
-L_H(X, Y) =\frac{1}{n}\cdot\left(1 + \sum_{i=1}^{n-1} X^i\cdot Y^{n-i}\right) = \frac{1}{n}\cdot \frac{Y\cdot v_H(X) - X\cdot v_H(Y)}{X - Y},
-\]
-where $v_H(X)= X^n - 1$ is the vanishing polynomial of $H$.
-Again, for $y\in H$ the polynomial $L_H(X, y)$ is the Lagrange polynomial which is equal to $1$ at  $x=y$, and zero elsewhere on $H$.
-In all the protocols, the prover is given $M\geq 1$ functions $f_i:H\rightarrow F$, $i=0, \ldots, M-1$, and wants to prove that their ranges are contained in that of a prediscribed table $t: H\rightarrow F$, i.e. 
-\[
-\bigcup_{i=0}^{M-1} \{f_i(x)\}_{x\in H}\subseteq \{t(x)\}_{x\in H}.
-\]
-For notational convenience, will use the same notation for the function $f: H\rightarrow F$ and its sequence of values $(f(g^k))_{k=0}^{n-1}$. 
-
-Our cost analysis is based on the following approximate formula:
-Assume that  we have Lagrange representation of $\nu\geq 1$ polynomials $p_1(X)$, \ldots, $p_\nu(X)$ over $H$, where all $\deg p_i(X) < |H|$, and an $\nu$-variate polynomial $Q$ over $F$ with absolute degree $d$ and multplicative complexity $Q_\mathsf M$.
-Then the number of field multiplications for computing the Lagrange representation of the quotient polynomial $q(X)$ in
-\[
-Q(p_1(X), \ldots, p_\nu(X)) = 0 \mod v_H(X),
-\]
-over the ``multiplication domain'' $H'$ of size $d\cdot |H|$ (except the trivial coset $H$) is 
-\begin{equation}
-\label{e:uv:quotientpoly:cost}
-\begin{aligned}
-\nu  \cdot  \left(\frac{|H|}{2} \cdot\log|H| + \frac{d\cdot |H|}{2} \cdot\log(d\cdot|H|) \right)+ d\cdot |H|\cdot ( Q_M + 1) 
-%\\
-%= d \cdot |H| \cdot\left(\frac{\nu}{2}\cdot\log|H| + Q_\mathsf M + 1 + \frac{\nu}{2} \cdot\log d  \right).
-\end{aligned}
-\end{equation}
-The first term corresponds to the computation of the coefficients of $p_1(X)$, \ldots, $p_\nu(X)$, plus their values over the multiplication domain, and the second term is for the pointwise evaluation of $Q$ over that domain, plus the multiplication with the precomputed inverses of the vanishing polynomial for obtaining the values of $q(X)$.
-Theses values over the $d-1$ (non-trivial) cosets of $H$, enumerated as $a^i\cdot H$, $i=1,\ldots, d-1$,  where $a$ is any element of $H'\setminus H$, define the Lagrange representations of ``component polynomials'' $q_0(X),\ldots, q_M(X)$ of degree $\deg p_i(X) <|H|$ in the decomposition
-\begin{equation}
-\label{e:q:decomposition}
-q(X) = \frac{1}{d}\cdot \sum_{i=1}^{d-1}\frac{v_{H'}(a^{-i}\cdot X)}{v_H(a^{-i}\cdot X)} \cdot q_i(a^{-i}\cdot X).
-\end{equation}
-We point out that when embedding lookups in other IOPs (for example Plonk), so that their overall identities share the same quotient polynomial, then the fractional cost for the lookup is less. 
-
-
-\subsection{The logarithmic derivate approach}
-\label{s:uv:lookup}
-
-\subsubsection{The batch-column argument}
-The lookup condition is equivalent to that the rational function
-\begin{equation}
-\label{e:lookup:h}
-h(x) = \sum_{i=0}^{M-1} \frac{1}{\alpha + f_i(x)} - \frac{m(x)}{\alpha + t(x)},
-\end{equation}
-sums up to zero over $H$, where $\alpha\sample F$ is the first verifier challenge.
-For this the prover provides the Lagrange representation of $\phi(X)$ subject to the domain identity
-\[
-\phi(g\cdot x) - \phi(x) = \sum_{i=0}^{M-1} \frac{1}{\alpha + f_i(x)} - \frac{m(x)}{x + t(x)},
-\]
-or 
-\begin{equation}
-\label{e:uv:lookup:overall:identity}
- \tau(X) \cdot
-\prod_{i=0}^{M-1} \varphi_i(X) \cdot (\phi(g\cdot X) - \phi(X))= 
- \tau(X) \cdot \prod_{i=0}^{M-1} \varphi_i(X)\cdot \left(\sum_{i=0}^{M-1} \frac{1}{\varphi_i(X)} - \frac{m(X)}{\tau(X)}\right) \mod v_H(X),
-\end{equation}
-where the right hand side is a polynomial, and 
-\begin{align*}
-\varphi_i(X) &= \alpha + f_i(X), \quad i=0,\ldots, M-1,
-\\
- \tau(X) &= \alpha + t(X).
-\end{align*}
-The overall identity \eqref{e:uv:lookup:overall:identity} is of the form
-\[
-Q(\tau(X), \varphi_0(X), \ldots, \varphi_{M-1}(X), \phi(X), \phi(g\cdot X)) = 0 \mod v_H(X),
-\]
-where $Q$ has $\nu = M + 3$ variables and absolute degree $d= M + 2$. 
-The prover computes the Lagrange representation of the overall quotient polynomial over the multiplication domain $H'$ of size $(M + 1)\cdot |H|$, except $H$,
-and sends the Lagrange representations of the component polynomials $q_1(X),\ldots, q_{M}(X)$ as defined by \eqref{e:q:decomposition} to the verifier.
-The verifier checks the overall identity at a random $\beta\sample F$ by querying the oracles at the needed points.
-
-\subsubsection{Cost analysis}
-
-As in Section \ref{s:lookups}, we use the fractional representation from \eqref{e:uv:lookup:overall:identity} for computing domain evaluations of $Q$. 
-Using batch inversion, the equivalent multiplicative complexity for computing $Q$ is 
-\[
-Q_\mathsf M = M + 1 + 3\cdot (M+1) + 2 = 4\cdot M + 6,
-\] 
-taking into account the proportional cost of batch inversion as $3$ multiplications.  
-
-The prover cost, simplified to the number of field multiplications, is as follows.
-Computing the values of $\varphi_0, \ldots, \varphi_{M-1}$ and $\tau$ over $H$ does not cost a single field multiplication, their inverses are obtained within
-\[
-(M+1)\cdot 3\cdot |H| 
-\]
-multiplications, from which $h(x)$ over $H$ and the values of the sumcheck polynomial $\phi$ are obtained by another overll $2\cdot |H|$ multiplications.
-%The interpolants of $\varphi_0,\ldots, \varphi_{M-1}$, $\tau$ and $\phi$ cost
-%\[
-%(M + 2) \cdot \mathsf{FFT}(|H|) = |H|\cdot \frac{M + 2}{2} \cdot \log|H|
-%\] 
-%field multiplications.
-Since the values of the shifted function $\phi(g\cdot X)$ are directly obtained from those of $\phi$, we may apply 
-\eqref{e:uv:quotientpoly:cost} for $\nu = M + 2$, and computing the Lagrange representation of the overall quotient takes
-\[
-(M + 2) \cdot \left(\frac{|H|}{2}\cdot \log|H| + \frac{(M+2)\cdot |H|}{2} \cdot\log((M+2)\cdot|H|) \right) + (M+2)\cdot |H|\cdot (Q_\mathsf M + 1)
-%= d \cdot |H| \cdot\left(\frac{M + 2}{2}\cdot\log|H| + Q_\mathsf M +1 + \frac{M + 2}{2} \cdot\log d  \right)
-\]
-multiplications.
-Overall, the oracle prover demands
-%\begin{equation}
-% |H| \cdot\left((d+1) \cdot \frac{M + 2}{2}\cdot \log|H| +  \frac{M + 2}{2} \cdot d\cdot \log d + d\cdot Q_M + 3\cdot M + 5   \right)
-%\end{equation}
-\begin{equation}
- |H| \cdot\left(\frac{(M + 2)^2}{2}\cdot (\log|H| + \log (M+2)) +  (M + 2)\cdot(4\cdot M+6) + \frac{M+2}{2} \cdot \log |H| + 4\cdot M + 7   \right)
-\end{equation}
-field multiplications, and it provides the equivalent of $M + 3$ functions of size $|H|$, i.e. the values of $m$, $\phi$  and the component polynomials $q_1, \ldots, q_{M+1}$ over $H$.
-
-
-\subsubsection{The reference variant}
-
-%
-% Large batching strategy,
-%
-% the $f_i$ together with $t$ are represented by a single function $ft$ over the extended domain $\bar H$ of size $(M+1)*|H|$
-% the sumcheck and its $\phi$ is over $\bar H$, the overall identity
-%  phi(g X) - phi(X) = m(X) * "L(H, x)" * 1/ ft(X) mod \bar H,
-% is of degree $d= 2$, and the quotient poly is of size $|\bar H| =  (M+1) *|H|$. (The "L(H,x)" is equal to v_{\bar H}(X)/ v_{H}(X). 
-% The overall oracle cost is the equivalent of $2* (M + 1) + 1$ polys of size $|H|$. 
-% $Q_M = 1$ and therefor 
-% 
-
-
-
-The prover provides $M+1$ helper functions, one for each reciprocal
-$
-h_i  (x) = \frac{1}{\alpha + f_i(x)},
-$
-$i=1,\ldots, M$, and another one for
-$
-h_{t}(x) = \frac{1}{\alpha + t(x)}.
-$
-Correctness of the helper functions is enforced by the domain identities
-\[
-h_i(x) \cdot (\alpha + f_i(x)) - 1 = 0,
-\]
-for $i=1, \ldots, M$, and
-\[
-h_{t}(x) \cdot (\alpha + t(x)) - 1 = 0 ,
-\]
-and these are altogether subject to the sumcheck
-\[
-\sum_{i=1}^{M} h_i(x) - h_t(x)\cdot m(x) = \phi(g\cdot x ) - \phi(x).
-\]
-The domain identities are again turned into a sumchecks by applying the Lagrange kernel $L_{H}(\:.\:, \vec z)$, where $\vec z\sample F^n$.
-Combining the sumchecks using the powers of a random $\lambda\sample F$ leads to the overall sumcheck  
-\begin{align*} 
-%\label{e:sumcheckh}
-\sum_{\vec x \in H} Q(L_H(\vec x, \vec z),  \varphi_1(\vec x),\ldots, \varphi_M(\vec x), \tau(\vec x), h_1(\vec x),\ldots h_{M}(\vec x), h_t(\vec x), m(\vec x))&= 0,
-\end{align*}
-with
-\begin{equation}
-\label{e:lookup:Q:linear}
-\begin{aligned}
-Q(L, \varphi_1,\ldots, \varphi_M, \tau, h_1,&\ldots, h_M, h_t) =   
-\\
-&
-\sum_{i=1}^{M} h_i - m\cdot  h_t 
-+   L\cdot\left(\sum_{i=1}^{M}\lambda^i \cdot (h_i \cdot \varphi_i - 1)+ \lambda^{M+1} \cdot (h_{t}\cdot\tau - 1) \right).
-\end{aligned}
-\end{equation}
-In this variant, the prover provides an overall equivalent of $M+2$ oracles of size $|H|$. 
-The sumcheck polynomial $Q$ has  $\nu= 2\cdot (M + 2)$ variables but its absolute degree $d=3$ is independent of the number of columns.
-The arithmetic complexities of $Q$ are $|Q_\mathsf M|=  2\cdot (M+2)$, $|Q_\mathsf S|= M + 2$, $|Q_\mathsf A|=2\cdot M$.
-
-\subsubsection{Computational cost}
-The prover cost of the protocol is as follows. 
-Computing the values of $h_1, \ldots, h_M$ and $h_t$ over $H$ using batch inversion costs 
-\[
-(M+1)\cdot |H| \cdot(3 \cdot \mathsf M + \mathsf A),
-\]
-and the values for $L_{H}(\:.\:, \vec z)$ over $H$ are determined in  $|H|\cdot (\mathsf M + \mathsf A)$.
-According to \eqref{e:sumcheck:cost:precise} the overall sumcheck costs
-\[
-|H| \cdot \left(1-\frac{1}{|H|}\right)\cdot \big(14\cdot (M+2) \cdot \textsf M + 6\cdot (M+2)\textsf S + (7\cdot M +16) \cdot \textsf A\big).
-\]
-Neglecting the $\frac{1}{M\cdot |H|}$-term, the overall cost for the prover is
-\begin{equation}
-\label{e:lookup:large:cost}
-|H|\cdot ((17\cdot M + 32)\cdot\mathsf M + (6\cdot M + 12)\cdot\mathsf S + (15\cdot M + 18)\cdot\mathsf A),
-\end{equation}
-but the prover needs to provide the oracles for one function over  a domain of size $M\cdot|H|$, and one over $H$. 
-\subsection{Plookup}
-\label{s:uv:plookup}
-
-We describe the \cite{LookupsBlog} variant of plookup \cite{Plookup}, generalized to batch-lookups.
-Consider the concatenation of the sequences $(f_i(g^k))_{k=0}^{n-1}$, $i=0,\ldots, M-1$, and $(t_k)$, ordered as they occur in $(t_k)$:
-\[
-\bar s = (\bar s_i)_{i=0}^{(M + 1)\cdot n - 1} = (\underbrace{t_0, \ldots, t_0}_{1 + m_0 \text{ times}}, \underbrace{t_1, \ldots, t_1}_{1 + m_1 \text{ times}}, \ldots, \underbrace{t_{n-1}, \ldots, t_{n-1}}_{1 + m_{n-1} \text{ times}}),
-\]
-and split it into $(M+1)$ sequences of length $n$,  
-\[
-s_i = (\bar s_{i + k\cdot (M+1)})_{k = 0}^{n-1},
-\] 
-with $i= 0, \ldots, M$.
-We regard these sequences again as functions on $H$.
-Then
-\begin{equation}
-\label{e:uv:lookup:multiset}
-\bigcup_{i=0}^{M-1} \{s_i(x), s_{i+1}(x) \}_{x\in H} \cup \{(s_M(x), s_0(g\cdot x))\}_{x\in H} = \bigcup_{i=0}^{M-1}\{ (f_i(x), f_i(x))\}_{x\in H} \cup \{(t(x), t(g\cdot x))\}_{x\in H}
-\end{equation}
-as multisets.
-Moreover, this multiset equality is equivalent to $\bigcup_{i=0}^{M-1}\{f_i(x)\}_{x\in H}\subseteq \{t(x)\}_{x\in H}$.
-That is, the set inclusion holds if and only if there exists functions $s_0,\ldots, s_M: H\rightarrow F$ satisfying \eqref{e:uv:lookup:multiset}, which is rephrased by the lookup identity
-\begin{equation}
-\label{e:uv:plookup:identity}
-\begin{aligned}
-\prod_{x\in H} \prod_{i=0}^{M-1} (X + s_i(x) + s_{i+1}(x)\cdot Y)\cdot (&X + s_M(x) + s_0(g\cdot x)\cdot Y) 
-\\
-&= \prod_{x\in H} \prod_{i=0}^{M-1} (X + f_i(x) + f_i(x)\cdot Y)\cdot (X + t(x) + t(g\cdot x)\cdot Y).
-\end{aligned}
-\end{equation}
-
-The lookup protocol is as follows.
-The prover sends $s_0$, \ldots, $s_{M}$ subject to \eqref{e:uv:plookup:identity} to the verifier, which returns random samples $\alpha, \beta\sample F$ for $X$ and $Y$, reducing the lookup identity to the grand product
-\begin{equation}
-\label{e:uv:plookup:grandproduct}
-\prod_{x\in H}  \frac{\sigma_{M}(x)}{\tau(x)}\cdot \prod_{i=0}^{M-1} \frac{\sigma_{i}(x)}{\varphi_{i}(x)}   = 1,
-\end{equation}
-where
-\begin{align*}
-\tau(x) &= \alpha + t(x) + \beta\cdot t(g\cdot x), 
-\\
-\varphi_i (x) &=\alpha +  (1+\beta)\cdot f_i(x),\quad  i=0,\ldots, M-1,
-\\
-\sigma_i(x) &= \alpha + s_i(x) + \beta\cdot s_{i+1}(x),\quad  i= 0, \ldots, M-1,
-\\
-\sigma_{M}(x) &=  \alpha + s_M(x) + \beta\cdot s_0(g\cdot x).
-\end{align*}
-To prove \eqref{e:uv:plookup:grandproduct}, the prover provides the cumulative products polynomial $\phi$ for the function $h(x) =  \frac{\sigma_{M}(x)}{\tau(x)}\cdot \prod_{i=0}^{M-1} \frac{\sigma_{i}(x)}{\varphi_{i}(x)} $, which is characterized by the  domain identities
-\begin{equation*}
-\phi(g\cdot x) \cdot \tau(x) \cdot \prod_{i=0}^{M-1} \varphi_i (x)
-- \phi(x)\cdot \prod_{i=0}^M \sigma_i (x)
-= 0,
-\end{equation*}
-and
-\begin{equation*}
-L_H(x, 1)\cdot (\phi(x) - 1) = 0,
-\end{equation*}
-for all $x\in H$.
-The identities are combined into a single one using a random $\lambda \sample F$ from the verifier, yielding the overall identity
-\begin{align}
-\label{e:plookup:overall:identity}
-Q(L_H(X,1), \varphi_0(X), \ldots, \varphi_{M-1}(X), \sigma_0(X),\ldots,\sigma_M(X), \tau(X), \phi(X), \phi(g\cdot X)) = 0 \mod v_H(X),
-\end{align}
-where
-\begin{equation}
-\label{e:plookup:Q}
-Q(L, \varphi_0, \ldots, \varphi_{M-1}, \sigma_0,\ldots,\sigma_M, \tau, \phi, \phi_g) =
-\phi_g \cdot \tau \cdot \prod_{i=0}^{M-1} \varphi_i
-- \phi \cdot \prod_{i=0}^M \sigma_i
-+  \lambda \cdot L \cdot (\phi - 1).
-\end{equation}
-The prover provides (the Lagrange representation) of the  quotient components $q_1(X), \ldots, q_{M+1}(X)$, and the verifier checks the overall identity  \eqref{e:plookup:overall:identity} at a random $\gamma\sample F$, by querying the involved polynomials at the needed points.
-
-\subsubsection*{Cost analysis}
-
-The polynomial $Q$ in the overall identity \ref{e:plookup:overall:identity} has $\nu = 2\cdot (M + 1) + 3$ variables, absolute degree $d = M+2$, and multiplicative complexity $Q_M = 2\cdot (M +1) + 2$.
-Note that the values of $\phi(g\cdot X)$ over $H$ or any larger domain can be obtained by shifting, hence we can reduce the number of variables by one when using the cost formula \eqref{e:uv:quotientpoly:cost}.
-The values over $H$ for all $\varphi_i$, $\sigma_i$, and $\tau$ (overall $2\cdot (M+1)$ functions) consume
-\[
-|H|\cdot 2\cdot (M+1),
-\]
-field multiplications, the rational function $h(x)$ over $H$ is derived within
-\[
-6\cdot |H|,
-\] 
-using batch inversion, and computing the cumulative product function $\phi$ over $H$ costs another $|H|\cdot \mathsf M$.
-Assuming that the values of $L_H(x, 1)$ over the multiplication domain are precomputed, and that the values of $\phi(g\cdot X)$ over that domain are obtained by shifting, the cost of computing the overall quotient polynomial is 
-\[
-(2 \cdot M + 3) \cdot \left(\frac{|H|}{2}\cdot\log |H| +  \frac{d\cdot |H|}{2} \cdot\log(d\cdot|H|)\right) + d\cdot |H|\cdot (Q_M  + 1).
-\]
-The overall cost of the oracle prover is  
-\begin{equation}
-%|H| \cdot\left( \left((d + 1)\cdot M  + \frac{3}{2} + 2\cdot d\right)\cdot\log|H| + 2M + 9 + 1 + (M+2)\cdot d\cdot \log d  \right)
-%\\
-|H| \cdot\left( \frac{(2\cdot M + 3)\cdot (M + 3)}{2}\cdot\log|H| +  (M+2)\cdot (2\cdot M + 4) + \frac{(2\cdot M+3)\cdot (M+2)}{2}\cdot \log d + 2\cdot M + 9 \right),
-\end{equation}
-% M+ 1 + 1 + d - 1 = 2(M+1) 
-while the oracle costs are equvialent to $2\cdot (M + 1) + 1$ domain evaluations of size $|H|$, corresponding to $s_0, \ldots, s_M$, $\phi$, and the quotient components $q_1, \ldots, q_{M+1}$.
-
-
-
-
-\subsection{The flookup strategy}
+\section{The flookup proof of radical}
 \label{s:uv:flookup}
 
 Section 5 of \cite{flookup} describes a polynomial IOP for lookups, which is almost identical to the logarithmic derivative approach. 
 We present its generalization to batch-lookups. 
+Let $F$ be an FFT-friendly finite field, having a multiplicative subgroup $H = \{x\in F: x^n = 1\}$ of order $n$, and denote by $g$ a generator of it.  
 For showing that the ranges of witness function $f_i: H\rightarrow F$, $i=0, \ldots, M-1$, are contained in the range of a table $t: H\rightarrow F$, the fractional logaritmic derivative identity
 %\[
 %\sum_{x\in H} \frac{1}{X + f(x)} = \sum_{x\in H} \frac{m(x)}{X + t(x)}
@@ -1800,7 +1517,7 @@ For this the prover provides the Lagrange representation of the sumcheck polynom
 \[
 \phi(g\cdot x) - \phi(x) + \frac{R_T(\alpha)}{|H|\cdot v_T(\alpha)} = \sum_{i=0}^{M-1} \frac{1}{\varphi_i(x)}
 \]
-for all $x\in H$, or as the polynomial identity
+for all $x\in H$, or 
 \begin{equation}
 \label{e:flookup:overall:identity}
 \left(\phi(g\cdot X) - \phi(X) + \frac{R_T(\alpha)}{|H|\cdot v_T(\alpha)}\right) \cdot \prod_{i=0}^{M-1} \varphi_i(X) =  \prod_{i=0}^{M-1} \varphi_i(X)\cdot  \sum_{i=0}^{M-1} \frac{1}{\varphi_i(x)}  \mod v_H(X).
@@ -1810,147 +1527,9 @@ The overall identity is of the form
 Q(\phi_0(X), \ldots, \phi_{M-1}(X), \phi(X), \phi(g\cdot X)) = 0 \mod v_H(X),
 \]
 with $Q$ having $\nu = M + 2$ variables and absolute degree $d = M + 1$.
-The prover provides the Lagrange representation of the component polynomials $q_1(X), \ldots, q_M(X)$ for the overall quotient.
-The verifier samples $\beta\sample F$ and checks \eqref{e:flookup:overall:identity} at $X=\beta$ by quering the involved polynomials at the needed points. 
+%The prover provides the Lagrange representation of the component polynomials $q_1(X), \ldots, q_M(X)$ for the overall quotient.
+%The verifier samples $\beta\sample F$ and checks \eqref{e:flookup:overall:identity} at $X=\beta$ by quering the involved polynomials at the needed points. 
 
-\subsubsection*{Cost analysis}
-%The main advantage of the protocol is that \eqref{e:flookup:overall:identity}  is quadratic over $H$, wheras in the univariate variant 
-%of Protocol \ref{prot:lookup} the overall identity is cubic.
-%%\[
-%%\left(\phi(g\cdot X) - \phi(X)\right)\cdot (\alpha + t(X))\cdot (\alpha + f(X)) =   \alpha + t(X) +  (\alpha + f(X)) \cdot m(X) + q(X) \cdot v_H(X) 
-%%\]
-%The quadratic degree leads to lower oracles costs, with a difference of $|H|$ in favor of the flookup protocol.
-%On the other hand, the computational costs for $R_T(X)$ are $\bigO{|H|\cdot \log^2|H|}$, by interpolating the multiplicities $m$ as function on the table range $T=\{t(x) : x\in H\}$. 
-%Concretely, using pre-computed intermediate products of table factors $X + t(x)$ (both the coefficients and their values used for obtaining them), the  interpolation algorithm uses
-%\[
-%\frac{|H|}{8} \left(3\cdot \log^2|H| + 11\cdot\log|H| + 3 \right)
-%\] 
-%field multiplications. 
 
-Let us count the number of field operations of the oracle prover.
-Computing the coefficients of $R_T(X)$ by interpolating the multiplicities $m$ as a function on the table range $T=\{t(x) : x\in H\}$ costs 
-\[
-\frac{|H|}{8} \left(3\cdot \log^2|H| + 11\cdot\log|H| + 3 \right)
-\] 
-field multiplications, using pre-computed intermediate products of the table factors $X + t(x)$ (both the coefficients and their values used for obtaining them). 
-See \cite{flookup} and the references therein for details on Lagrange interpolation over general sets.
-The Lagrange representation of $R_T(X)$ over $H$ is then obtained by another 
-\[
-\frac{|H|}{2} \cdot \log |H|
-\]
-multiplications.
-The values of the reciprocals $h(x) = \frac{1}{\alpha + f(x)}$ over $H$ cost $3\cdot |H|$ multiplications (using batch inversion), the computation of $\phi$ does not involve a single field multiplication.
-Using the fractional representation \eqref{e:flookup:overall:identity} for evaluating $Q$ using batch inversion yields the equivalent multiplicative complexity
-\[
-Q_\mathsf M = M + 1 +3\cdot M = 4\cdot M + 1,
-\]
-and by \eqref{e:uv:quotientpoly:cost} computing the components $q_1, \ldots, q_M$ of the overall quotient costs 
-\[
-%\nu  \cdot  \left(\frac{|H|}{2} \cdot\log|H| + \frac{d\cdot |H|}{2} \cdot\log(d\cdot|H|) \right)+ d\cdot |H|\cdot ( Q_M + 1) 
-|H|\cdot (M+1) \left(\frac{1}{2} \cdot\log|H| + \frac{(M+1)}{2} \cdot\log((M+1)\cdot|H|) \right)+ (M+1)\cdot |H|\cdot (4\cdot M + 1). 
-\]
-The overall cost of the oracle prover is 
-\begin{equation}
-\label{e:uv:flookup:cost}
-\begin{aligned}
-|H|\cdot \Bigg((M+1) \left(\frac{M+2}{2} \cdot\log|H| + \frac{(M+1)}{2} \cdot\log(M+1) \right) + &(M+1) \cdot (4\cdot M + 1)
-\\
-&+ \frac{3}{8}\cdot \log^2|H| + \frac{15}{8}\cdot\log|H| + \frac{3}{8} + 5
-\Bigg),
-\end{aligned}
-\end{equation}
-whereas the oracle costs are equivalent to $M+2$ domain evaluations of size $|H|$, corresponding to $R_T$, $\phi$, and $q_1, \ldots, q_M$.
-
-%
-%Due to the quite small $\bigO{\log^2 |H|}$-term and the lower degree of the overall identity, our operations counts indicate that the flookup strategy performs better than the univariate variant of Protocol \ref{prot:lookup}, with a break-even point beyond $|H| = 2^{20}$.
-%(However, considering batch-column lookups, the performance gap between the two IOPs shrinks with larger numbers of columns.)
-
-%The same holds for a variant\footnotemark of the flookup IOP, which has a $\bigO{|H|\cdot\log|H|}$ prover.
-%\footnotetext{%
-%This variant was reported to us by A. Gabizon.
-%}%
-%In this variant the prover provides the polynomial $R_T(X)$ with respect to the non-normalized Lagrange basis $\frac{v_T(X)}{X - z}$, $z\in T$ of the table set, whereas the other polynomials $\phi$ and $h$ are provided with respect to the Lagrange basis of $H$.
-%This approach removes the interpolation cost for $R_T(X)$, but comes at the cost of a polynomial commitment scheme with an opening proof for two different Lagrange representations.
-%For the \cite{Kate} commitment scheme such a hybrid Lagrange evaluation proof increases the number of multi-scalar multiplications by $|H|$, whereas for inner product arguments that increase is higher.
-%We shall elaborate on the details in another document.
-
-%The computational cost of the prover is as follows.
-%According to \cite{ModernAlgebra}, the polynomial $R_T(X)$ can be obtained from the multiplicity function $\tilde m: T\rightarrow F$ over  $T= \{t(x): x\in H\}$ by optimized Lagrange interpolation.
-%Using precomputations this can be done within
-%\[
-%\big( 3 \cdot \textsf{FFT}(2\cdot |H|) + 2\cdot |H|\big) \cdot  \log |H| 
-%\approx 6\cdot |H|\cdot \log^2 |H| + 8 \cdot |H|\cdot\log|H|
-%\]
-%field multiplications.
-%
-%
-%Computing the value $v_T(\alpha)$ costs $1\cdot |H|\cdot (\textsf M + \textsf A)$, hence  
-%given the values of $f(x)$ over $H$, the domain evaluation of $\frac{v_T(\alpha)}{\alpha + f(x)}$ is obtained within
-%\[
-%(1\cdot |H| + 3\cdot |H|)\cdot\mathsf M + |H|\cdot\mathsf A,
-%\]
-%using batch inversion.
-
-\subsection{Comparison}
-
-Based  on the equivalent number of field multiplications from Table \ref{tab:pippenger}, we obtain the following estimation of 
-the logarithmic derivative lookups over plookup, as the ratio of their number of field multiplications $r =\nicefrac{\mathsf M({Plookup})}{\mathsf M({logD})}$:
-For all domain sizes $\log|H| = 12, 14, 16, 18$ we get a maximum advantage of about $r_{max} \approx 1.8$, whereas 
-\[
-r =\nicefrac{\mathsf M({plookup})}{\mathsf M({logD})} \geq 1.75
-\]
-whenever $M\geq 12$.
-Although having worse asymptotic complexity, the flookup strategy outperforms the logarithmic derivative plookup at these domain sizes, see Table \ref{tab:uv:comparison}.
-Its maximum advantage is about $1.25$ -- $1.3$ is throughout at $M=1$, wheras that advantage tends to $1$ at high number of columns (for $M\geq 33$ it is less than $5\%$). 
-
-%\begin{table}[h!]
-%\caption{%
-%The estimated performance advantage of the logarithmic derivative lookups over plookup, as the ratio of their number of field multiplications $r =\nicefrac{\mathsf M({Plookup})}{\mathsf M({logD})}$.
-%The numbers are based on the equivalent number of field multiplication from Table \ref{tab:pippenger}.
-%For hypercube sizes $|H|$ ranging from $2^{12}$--$2^{18}$ we describe the maximum ratio $r_{max}$ over the number of columns $M$, as well as the ranges for $M$ over which $r$ is larger than $2$ and $3$, respectively.
-%The minimum ratio is throughout $r= 1.5$ and obtained in the single-column setting $M=1$. 
-%}
-%\label{tab:uv:comparison}
-%\vspace*{0.5cm}
-%\centering
-%\begin{tabular} {|c|c|c|c|c|}
-%\hline
-%$\log|H|$ & $r\geq 1.75$ & $r\geq 1.5$ & $r_{max}$ 
-%\\\hline
-%12 & $M\geq 12$ & $M\geq 3$ & $1.8$ 
-%\\
-%14 & $M\geq 12$ & $M\geq 3$ & $1.8$ 
-%\\
-%16 &$M\geq 12$ & $M\geq 3$ & $1.8$ 
-%\\
-%18 & $M\geq 11$  & $M\geq 3$ & $1.8$ 
-%\\\hline
-%\end{tabular}
-%\end{table}
-%
-
-%\begin{table}[h!]
-%\caption{%
-%The estimated performance advantage of the flookup strategy over the logarithmic derivate approach, as the ratio of their number of field multiplications $r =\nicefrac{\mathsf M({flookup})}{\mathsf M({logD})}$.
-%The numbers are based on the equivalent number of field multiplication from Table \ref{tab:pippenger}.
-%For hypercube sizes $|H|$ ranging from $2^{12}$--$2^{18}$ we describe the maximum ratio $r_{max}$ over the number of columns $M$, as well as the ranges for $M$ over which $r$ is smaller than $1.10$ and $1.05$, respectively.
-%}
-%\label{tab:uv:comparison}
-%\vspace*{0.5cm}
-%\centering
-%\begin{tabular} {|c|c|c|c|c|}
-%\hline
-%$\log|H|$ & $r\leq 1.10$ & $r\leq 1.05$ & $r_{max}$ 
-%\\\hline
-%12 & $M\geq 12$ & $M\geq 32$ & $1.3$ (at $M = 1$) 
-%\\
-%14 & $M\geq 12$ & $M\geq 33$ & $1.3$ (at $M = 1$)  
-%\\
-%16 &$M\geq 13$ & $M\geq 34$ & $1.27$ (at $M = 1$)  
-%\\
-%18 &$M\geq 13$ & $M\geq 34$ & $1.25$ (at $M = 1$)  
-%\\\hline
-%\end{tabular}
-%\end{table}
 
 \end{document}
