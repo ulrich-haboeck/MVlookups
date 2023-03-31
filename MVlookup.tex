@@ -161,20 +161,20 @@ Lookup arguments prove a sequence of values being member of an, often prediscrib
 They are an essential tool for improving the efficiency of arguments for statements which are otherwise quite expensive to arithmetize. 
 Main applications are (1) lookups for relations of high algebraic complexity, and (2) lookups for interval ranges, the latter of which are extensively used by zero-knowledge virtual machines.
 % enforcing execution trace elements being valid machine words.
-Although closely related to permutation (or shuffle) arguments \cite{shuffle}, a first explicit occurence of lookups dates back to Arya \cite{Arya}, to the best of our knowledge.
-While their argument handles multiplicities directly in a quite costly manner, Plookup \cite{Plookup} greatly improved over \cite{Arya} using a rather geometric approach.
+Although closely related to permutation (or shuffle) arguments \cite{shuffle}, a first explicit occurence of lookups dates back to the  Arya paper \cite{Arya}, to the best of our knowledge.
+While their argument handles multiplicities directly in a quite costly manner, \textit{Plookup} \cite{Plookup} greatly improved over \cite{Arya} using a rather geometric approach.
 Since then Plookup (and variants of it) is \textit{the} general purpose lookup argument used in practical applications. 
 %That strategy, which we call the Plookup strategy in the sequel, uses a rearranged concatenation of witness and table sequence
 
 In this paper we describe a lookup argument based which is based on logarithmic derivatives. 
-As in classical calculus, formal logarithmic derivatives turn products $\prod_{i=1}^N (X - z_i)$ into sums of their reciprocals, 
+As in classical calculus, the formal logarithmic derivative turns products $\prod_{i=1}^N (X - z_i)$ into sums of their reciprocals, 
 \[
 \sum_{i=1}^N \frac{1}{X - z_i},
 \]
 having poles with the same multiplicity as the zeros of the product.
 Working with poles instead of zeros is extremly useful for lookup arguments.
 %This fractional decomposition of the logarithmic derivative is extremly useful for lookup arguments:
-While the treatment of multiplicities is costly in the product approach, it turns cheap when using logarithmic derivatives:
+While the treatment of multiplicities is quite indirect and therefore costly in the product approach \cite{Arya, Plookup}, it turns straight-forward when using logarithmic derivatives:
 Given a sequence of field elements $(a_i)_{i=1}^N$ and another sequence $(t_j)_{j=1}^M$, then $\{a_i: i =1,\ldots, N\}\subseteq \{t_j : j=1,\ldots, M\}$ as sets, if and only if there exists a sequence of field elements $(m_j)_{j=1}^M$ (the multiplicities) such that
 \begin{equation*}
 \label{e:intro:lookup:eq}
@@ -182,7 +182,7 @@ Given a sequence of field elements $(a_i)_{i=1}^N$ and another sequence $(t_j)_{
 \end{equation*}
  (This holds under quite mild conditions on the field, see Lemma \ref{lem:batchsetmembership} for details.)
 %In particular for batch-column lookups, where several columns are subject to the same table, 
-Based on this fractional identity we construct a lookup proof which is more efficient than the Plookup approach, which argues via a sorted union of witness and table sequence.
+Based on this fractional identity we construct a lookup argument which is more efficient than Plookup, which argues via a sorted union of witness and table sequence.
 This is particularly true in the case of \textit{batch-column} lookups, where several sequences (``columns'') are subject to the same table lookup, a situation that often arises in zero-knowledge virtual machines,  enforcing execution trace elements being valid machine words.
 For example, the arithmetic unit of Polygon's System Zero \cite{PolygonZero} has about $70$ columns subject to one and the same range check, or the tinyRAM implementation of Orbis Labs \cite{tinyRAMOrbis} has $12$ columns subject to one and the same lookup table. 
 %The naive strategy for processing batches of columns is to run several lookup proofs in parallel, one for each column. 
@@ -195,12 +195,13 @@ In our lookup the oracle costs, measuring the number and sizes of the oracles, a
 %(For a large numbers of plumns this factor is independent of $M$ and about $1.8$.) 
 %Although we describe our lookups in the multivariate setting, we point out  
 
-We stress the fact that we are not the only ones who exploit fractional decompositions for lookups. 
-Concurrently, building on the work of \cite{Caulk} and \cite{CaulkPlus} on ``large-table'' lookups, Gabizon and Khovratovich \cite{flookup} describe a bilinear argument, the proving-time of which is independent of the table size. 
-The main contribution of \cite{flookup} is a univariate oracle proof for the radical of a witness sequence (i.e. the sequence with multiple occurences removed) which is almost identical to our approach\footnote{%
-Almost simultaneously, G. Roh, W. Dai, M. Jabbour, and A. He published the same idea in a blog post \cite{DaiFlookupBlog}.
-To underpin that our work was not influenced by concurrent efforts we refer to the verified commit on our Github repository, 
-\url{https://github.com/Orbis-Tertius/MVlookups/commit/4a8816a04e8107e05d4bb0897ee52e72210c84b8} 
+We stress the fact that we are not the only ones who exploit fractional decompositions for lookups and related problems.
+Bulletproof++ \cite{BulletproofsPlusPlus} already uses logarithmic derivatives for range proofs. 
+(This was not known to us until the present update of this write-up.) 
+Although their treatment lacks formal justification, the key idea is the same as ours. 
+Concurrently, improving the track of work \cite{Caulk, CaulkPlus} on ``large-table'' lookups (Caulk and Caulk+), \textit{Flookup} \cite{flookup} describes an oracle proof for the radical of a witness sequence (i.e. the sequence with multiple occurences removed) which is almost identical to the logarithmic derivative approach\footnote{%
+Almost simultaneously, G. Roh, W. Dai, M. Jabbour, and A. He, published the same idea in a blog post \cite{DaiFlookupBlog}.
+%To underpin that our work was not influenced by concurrent efforts we refer to the verified commit on our Github repository, \url{https://github.com/Orbis-Tertius/MVlookups/commit/4a8816a04e8107e05d4bb0897ee52e72210c84b8} 
 }.
 %Instead of using logarithmic derivatives, their prover explicitly provides the polynomial $R_T(X) = \sum_{j=1}^M m_j \cdot \frac{v_T(X)}{X - t_j}$, where $v_T(X)= \prod_{j=1}^M (X - t_j)$ is the precomputed table polynomial, and shows the identity 
 %\[
@@ -208,8 +209,9 @@ To underpin that our work was not influenced by concurrent efforts we refer to t
 %\]
 %While the oracle costs, measured by the number and sizes of the polynomials, are less than in our argument, that advantage is traded for the computation of $R_T(X)$ in the ring of polynomials, which in general consumes $O(M\cdot\log^2 M)$ field operations.
 %We give comparison with our approach in the appendix. 
+In the meantime, logarithmic derivatives are directly used in large-table lookups, yielding the currently most efficient argument \textit{Cached Quotients} \cite{cq}.
 
-This document focuses on batch-column lookups with asymptotically linear prover costs.  
+This document focuses on batch-column lookups in the multivariate setting.
 It is organized as follows.
 %In particular, we consider batch-column lookups with respect to a single, in practice medium-sized table, a use case that is extensively used in execution trace proofs.
 %The document s organized as follows. 
@@ -1352,8 +1354,8 @@ As the protocol is along the lines of plookup, we omit further details.
 
 
 The significant advantage of the logarithmic derivative lookup over Plookup is the lower oracle costs.
-While the Plookup strategy demands $M + 1$ oracles for committing to the sorted union of the $M$ witness column and the table, the logarithmic derivative approach demands only a single oracle for the multiplicities.
-We compare the two strategies by their computational cost per column, when running them with optimal sum/product size $\ell$ as given in Table \ref{tab:lookup:optimal} and \ref{tab:plookup:optimal}.
+While the Plookup strategy demands $M + 1$ oracles for the sorted union of the $M$ witness column and the table, the logarithmic derivative approach demands only a single one for the multiplicities.
+We compare the two strategies by their computational cost per column, when running them with the optimal sum/product size $\ell$ as given in Table \ref{tab:lookup:optimal} and \ref{tab:plookup:optimal}.
 
 \begin{table}[h!]
 \caption{%
@@ -1412,7 +1414,7 @@ We use this configuration in our comparison, Table \ref{tab:comparison:bPlookup}
  
 \begin{table}
 \caption{%
-A rough comparison of the three lookup protocols in their degree $d=2$ variant.
+A rough comparison of the three lookup protocols in their quadratic constraint variant.
 The table presents the overall number of commitments for a batch of $M=2^b$ columns. 
 (bPlookup denotes Plookup using multiplicity encoding with $b$ bits.) 
 }
@@ -1469,7 +1471,7 @@ For these batch sizes it consumes only $78\%$ and $66\%$ of Plookups' number of 
 
 \section{Acknowledgements}
 
-The author would like to thank Rayan Matovu and Morgan Thomas for giving me the space and time to dwell on batch-column lookups. 
+The author would like to thank Rayan Matovu and Morgan Thomas for giving me the space and time to dwell on batch-column lookups during my employment at Orbis Labs.
 Special thanks to Marcin Bugaj for helping out with the Pippenger benchmarks.
 Furthermore, I would like to thank Ariel Gabizon for his feedback and useful discussions.
 
